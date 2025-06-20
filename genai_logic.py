@@ -10,7 +10,7 @@ from typing import List, Dict, Optional
 
 load_dotenv()
 
-llmclient = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+llmclient = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))   
 
 
 class CourseInit(BaseModel):
