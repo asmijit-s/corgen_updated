@@ -28,16 +28,17 @@ The course development process follows these stages:
 You are currently reviewing the course at the **'{stage}'** stage.
 
 Please analyze the context below and return {"concise" if feedback_mode == "light" else "detailed"} suggestions for improving, expanding, or refining the content at this stage. If any important element is missing or can be clarified further, mention that as well.
-STAGE_INSTRUCTIONS = {
-    "outline": "Focus on improving clarity, completeness of prerequisites, alignment between objectives and outcomes, and coherence of description.",
-    "module": "Ensure logical grouping of topics, coverage of all outcomes, and balanced workload.",
-    "submodule": "Check for progression, granularity, and coverage of all module elements.",
-    "activity": "Suggest diverse pedagogical techniques, align with Bloom's taxonomy, ensure student engagement."
-}
+
+STAGE_INSTRUCTIONS:
+- "outline": "Focus on improving clarity, completeness of prerequisites, alignment between objectives and outcomes, and coherence of description.",
+- "module": "Ensure logical grouping of topics, coverage of all outcomes, and balanced workload.",
+- "submodule": "Check for progression, granularity, and coverage of all module elements.",
+- "activity": "Suggest diverse pedagogical techniques, align with Bloom's taxonomy, ensure student engagement."
+
 Current Context:
 {context}
 
-Read the stage instructions carefully and provide suggestions.
+Read the stage instructions carefully.
 """
 
     try:
