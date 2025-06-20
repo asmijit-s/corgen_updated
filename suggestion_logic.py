@@ -16,24 +16,28 @@ class SuggestionOutput(BaseModel):
     message: str
 
 def get_stage_suggestions(stage: str, context: str, feedback_mode: str = "light"):
-    """
-    Get AI-generated suggestions based on the current stage of course creation.
-
-    Parameters:
-    - stage: one of ["outline", "module", "submodule", "activity"]
-    - context: the content generated/edited so far
-    - feedback_mode: ["none", "light", "detailed"]
-    """
-    if feedback_mode == "none":
-        return SuggestionOutput(suggestions=[], message="Feedback mode disabled.").model_dump()
-
     prompt = f"""
-You are a course design assistant reviewing a course at the '{stage}' stage.
-Based on the current content provided below, offer {"concise" if feedback_mode == "light" else "detailed"} suggestions 
-for improvements, additions, or structural changes the SME might consider.
+You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses.
 
+The course development process follows these stages:
+1. **Outline Generation**: Includes title, prerequisites, description, learning outcomes, duration, credits.
+2. **Module Creation**: Divides the course into coherent, topic-wise modules.
+3. **Submodule Creation**: Each module is broken down into smaller, focused submodules.
+4. **Activity Design**: Learning activities (lectures, quizzes, assignments, labs) are added under each submodule.
+
+You are currently reviewing the course at the **'{stage}'** stage.
+
+Please analyze the context below and return {"concise" if feedback_mode == "light" else "detailed"} suggestions for improving, expanding, or refining the content at this stage. If any important element is missing or can be clarified further, mention that as well.
+STAGE_INSTRUCTIONS = {
+    "outline": "Focus on improving clarity, completeness of prerequisites, alignment between objectives and outcomes, and coherence of description.",
+    "module": "Ensure logical grouping of topics, coverage of all outcomes, and balanced workload.",
+    "submodule": "Check for progression, granularity, and coverage of all module elements.",
+    "activity": "Suggest diverse pedagogical techniques, align with Bloom's taxonomy, ensure student engagement."
+}
 Current Context:
 {context}
+
+Read the stage instructions carefully and provide suggestions.
 """
 
     try:
