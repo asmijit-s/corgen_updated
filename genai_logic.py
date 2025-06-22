@@ -82,3 +82,63 @@ INSTRUCTIONS FOR GENERATION:
         )
     )
     return response.text or ""  
+
+from google.genai.types import Content, Part, GenerateContentConfig
+
+def redo_course_outline(course: CourseInit, prev_outline: CourseOutline, user_suggestion: str) -> str:
+    """
+    Regenerate the course outline based on user feedback/suggestions.
+    """
+
+    # Prepare the system-level instruction with full context
+    system_prompt = f"""
+You are a course design assistant. You are given a previously generated course outline.
+Now, the user has provided a suggestion to modify or improve this outline.
+
+Use this suggestion to regenerate the course outline appropriately. You may revise the learning outcomes,
+enhance the description, clarify prerequisites, or make any other changes as needed — but ensure the overall
+structure remains aligned with the original course metadata.
+
+### Course Metadata:
+- Title: {course.title}
+- Prerequisites: {course.prerequisites}
+- Description: {course.description}
+- Learning Objectives: {', '.join(course.learning_objectives)}
+- Target Audience: {course.target_audience}
+- Duration: {course.duration}
+- Credits: {course.credits}
+
+### Previous Outline:
+{prev_outline.model_dump_json(indent=2)}
+
+### Instructions:
+- Do NOT discard useful content from the previous outline unless the suggestion implies it.
+- Refine and regenerate the outline with improvements.
+- Maintain the expected format and ensure clarity and student focus.
+
+### Output Format:
+Strictly return the revised outline as a JSON object matching this schema:
+- course_id
+- title
+- prerequisites
+- description
+- learning_outcomes
+- duration
+- credits
+"""
+
+    # Construct the user message (the suggestion)
+    user_content = Content(role="user", parts=[Part(text=user_suggestion)])
+
+    # Call the Gemini model
+    response = llmclient.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=user_content,
+        config=GenerateContentConfig(
+            system_instruction=system_prompt,
+            response_mime_type="application/json",
+            response_schema=CourseOutline
+        )
+    )
+    print("LLM Response:", response.text)  # Debugging line to see the response
+    return response.text or ""
