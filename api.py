@@ -1,144 +1,111 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 from typing import List, Optional
-from genai_logic import generate_course_outline, redo_course_outline, CourseInit, CourseOutline
-from suggestion_logic import get_stage_suggestions
-import uuid
-import json
-from activity_gen import (
-    generate_activities,
-    rebuild_activity_list,
-    Activity
+from genai_logic import (
+    CourseInit, CourseOutline, Module, ModuleSet, SubmoduleSet,
+    generate_course_outline, redo_course_outline,
+    generate_modules, redo_modules,
+    generate_submodules, redo_submodules,
+    generate_activities, redo_activities,
+    Stage, get_stage_suggestions
 )
 
 router = APIRouter()
-course_context = {}
 
-class GenerateRequest(BaseModel):
+# --------------------------- COURSE OUTLINE ---------------------------
+
+@router.post("/generate/outline")
+def api_generate_course_outline(course: CourseInit):
+    result = generate_course_outline(course)
+    return {"result": result}
+
+@router.post("/redo/outline")
+def api_redo_course_outline(
+    course: CourseInit,
+    prev_outline: CourseOutline,
+    suggestion: str = Body(...)
+):
+    result = redo_course_outline(course, prev_outline, suggestion)
+    return {"result": result}
+
+# --------------------------- MODULES ---------------------------
+
+@router.post("/generate/modules")
+def api_generate_modules(course_outline: CourseOutline):
+    result = generate_modules(course_outline)
+    return {"result": result}
+
+@router.post("/redo/modules")       
+def api_redo_modules(
+    course_outline: CourseOutline,
+    prev_modules: ModuleSet,
+    suggestion: str = Body(...)
+):
+    result = redo_modules(course_outline, prev_modules, suggestion)
+    return {"result": result}
+
+# --------------------------- SUBMODULES ---------------------------
+
+@router.post("/generate/submodules")
+def api_generate_submodules(module: dict):
+    result = generate_submodules(Module(**module))
+    return {"result": result}
+
+@router.post("/redo/submodules")
+def api_redo_submodules(
+    module: dict,
+    prev_submodules: dict,
+    suggestion: str = Body(...)
+):
+    result = redo_submodules(Module(**module), SubmoduleSet(**prev_submodules), suggestion)
+    return {"result": result}
+
+# --------------------------- ACTIVITIES ---------------------------
+
+class ActivityRequest(BaseModel):
     submodule_name: str
     submodule_description: str
-    activity_types: List[str]
-    user_instructions: str = None
+    activity_types: str
+    user_instructions: Optional[str] = None
 
-class RebuildRequest(BaseModel):
-    existing_activities: List[Activity]
+@router.post("/generate/activities")
+def api_generate_activities(req: ActivityRequest):
+    result = generate_activities(
+        submodule_name=req.submodule_name,
+        submodule_description=req.submodule_description,
+        activity_types=req.activity_types,
+        user_instructions=req.user_instructions
+    )
+    return {"result": result}
+
+class RedoActivityRequest(BaseModel):
+    existing_activities: List[dict]
     submodule_name: str
     submodule_description: str
-    user_suggestion: str
+    suggestion: str
 
-@router.post("/generate-activities")
-def generate_activities_api(request: GenerateRequest):
-    try:
-        activities = generate_activities(
-            submodule_name=request.submodule_name,
-            submodule_description=request.submodule_description,
-            activity_types=request.activity_types,
-            user_instructions=request.user_instructions
-        )
-        return activities
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.post("/redo/activities")
+def api_redo_activities(req: RedoActivityRequest):
+    result = redo_activities(
+        existing_activities=req.existing_activities,
+        submodule_name=req.submodule_name,
+        submodule_description=req.submodule_description,
+        user_suggestion=req.suggestion
+    )
+    return {"result": result}
 
-@router.post("/rebuild-activities")
-def rebuild_activities_api(request: RebuildRequest):
-    try:
-        activities = rebuild_activity_list(
-            existing_activities=[act.dict() for act in request.existing_activities],
-            submodule_name=request.submodule_name,
-            submodule_description=request.submodule_description,
-            user_suggestion=request.user_suggestion
-        )
-        return activities
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# --------------------------- STAGE SUGGESTIONS ---------------------------
 
-@router.post("/init-course")
-def init_course(course: CourseInit):
-    course_id = course.course_id or str(uuid.uuid4())
+class StageSuggestionRequest(BaseModel):
+    stage: Stage
+    context: str
+    feedback_mode: Optional[str] = "light"
 
-    if course_id in course_context:
-        raise HTTPException(status_code=400, detail="Course ID already exists")
-
-    outline_text = generate_course_outline(course)
-
-    try:
-        outline_json = json.loads(outline_text) if outline_text else {"raw": ""}
-    except json.JSONDecodeError:
-        outline_json = {"raw": outline_text or ""}
-
-    try:
-        suggestions = get_stage_suggestions(stage="outline", context=outline_text)
-        suggestions_json = json.loads(suggestions) if isinstance(suggestions, str) else suggestions
-    except Exception as e:
-        suggestions_json = {"raw": f"Suggestion generation failed: {str(e)}"}
-
-    # Save in memory
-    course_context[course_id] = {
-        "metadata": course,
-        "outline": outline_json,
-        "modules": [],
-        "suggestions": {
-            "outline": suggestions_json
-        }
-    }
-
-    return {
-        "message": "Course initialized",
-        "course_id": course_id,
-        "outline": outline_json,
-        "suggestions": suggestions_json
-    }
-
-
-class RedoRequest(BaseModel):
-    course_id: str
-    user_suggestion: str
-
-
-@router.post("/redo-outline")
-def redo_outline(request: RedoRequest):
-    course_id = request.course_id
-
-    if course_id not in course_context:
-        raise HTTPException(status_code=404, detail="Course ID not found")
-
-    course_data = course_context[course_id]
-    course_metadata = course_data["metadata"]
-    prev_outline_dict = course_data["outline"]
-    user_suggestion = request.user_suggestion
-
-    try:
-        # Convert dict to CourseOutline Pydantic model
-        prev_outline = CourseOutline(**prev_outline_dict)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to parse previous outline: {str(e)}")
-
-    try:
-        new_outline_text = redo_course_outline(course_metadata, prev_outline, user_suggestion)
-        
-        try:
-            new_outline = json.loads(new_outline_text) if new_outline_text else {"raw": ""}
-        except json.JSONDecodeError as e:
-            print("⚠️ JSON decode error in LLM response:", e)
-            print("🔍 Raw outline text:", new_outline_text)
-            new_outline = {"raw": new_outline_text or ""}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Outline regeneration failed: {str(e)}")
-
-    try:
-        suggestions = get_stage_suggestions(stage="outline", context=new_outline_text)
-        suggestions_json = json.loads(suggestions) if isinstance(suggestions, str) else suggestions
-    except Exception as e:
-        suggestions_json = {"raw": f"Suggestion generation failed: {str(e)}"}
-
-    # Update context
-    course_context[course_id]["outline"] = new_outline
-    course_context[course_id]["suggestions"]["outline"] = suggestions_json
-
-    return {
-        "message": "Course outline regenerated successfully",
-        "course_id": course_id,
-        "outline": new_outline,
-        "suggestions": suggestions_json
-    }
+@router.post("/suggestions/stage")
+def api_stage_suggestions(req: StageSuggestionRequest):
+    suggestions = get_stage_suggestions(
+        stage=req.stage,
+        context=req.context,
+        feedback_mode=req.feedback_mode if req.feedback_mode is not None else "light"
+    )
+    return {"suggestions": suggestions}
