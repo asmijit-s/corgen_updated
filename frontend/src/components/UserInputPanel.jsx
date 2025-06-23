@@ -51,10 +51,10 @@ const ModificationSelector = ({
 
   return (
     <div className="modification-section">
-      <div className="form-group">
-        <label className="form-label">{dropdownLabel}</label>
+      <div className="form-group-modification">
+        <label className="form-label-modification">{dropdownLabel}</label>
         <select 
-          className="select-dropdown" 
+          className="select-dropdown-modification" 
           value={selectedOption}
           onChange={(e) => setSelectedOption(e.target.value)}
           disabled={isLoading}
@@ -68,10 +68,10 @@ const ModificationSelector = ({
         </select>
       </div>
 
-      <div className="form-group">
-        <label className="form-label">{textareaLabel}</label>
+      <div className="form-group-modification">
+        <label className="form-label-modification">{textareaLabel}</label>
         <textarea 
-          className="modification-textarea" 
+          className="modification-textarea-modification" 
           value={modificationText}
           onChange={(e) => setModificationText(e.target.value)}
           placeholder={placeholder}

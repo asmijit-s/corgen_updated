@@ -12,6 +12,7 @@ import SubmodulesPage from "./components/SubModule.jsx";
 import ActivitiesPage from "./components/Activtity.jsx";
 import ModulesDropdownPage from "./components/ModuleDropdown.jsx";
 import BlueprintPage from "./components/Blueprint.jsx";
+import { FiChevronUp, FiChevronDown } from 'react-icons/fi'; // add this at the top
 import "./App.css";
 
 function generateOptionsFromLocalStorage(context = 'outline') {
@@ -85,7 +86,10 @@ function AppContent() {
   const [options, setOptions] = useState([]);
   const [leftPanelWidth, setLeftPanelWidth] = useState(300);
   const isResizing = useRef(false);
+  const [isCollapsed, setIsCollapsed] = useState(false); // NEW
 
+  const toggleCollapse = () => setIsCollapsed(prev => !prev);
+  
   const handleMouseDown = () => { isResizing.current = true; };
   const handleMouseMove = (e) => {
     if (!isResizing.current) return;
@@ -132,10 +136,34 @@ function AppContent() {
       <div className="main-layout">
         <div className="left-panel" style={{ width: leftPanelWidth }}>
           <CourseGenerationProgress />
-          <ModificationSelector 
-            options={options.map(({ label, value }) => ({ label, value }))} 
-            onSubmit={handleModificationSubmit} 
-          />
+          {/* Collapsible Header */}
+          <div 
+            className="modification-toggle-header"
+            onClick={toggleCollapse}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '8px 12px',
+              backgroundColor: 'rgb(0 160 255)',
+              borderBottom: '1px solid #ddd',
+              cursor: 'pointer',
+              height: 'fit-content',
+              width:'-webkit-fill-available',
+              color:'white'
+            }}
+          >
+            <span><strong>Modify Content</strong></span>
+            {isCollapsed ? <FiChevronDown /> : <FiChevronUp />}
+          </div>
+
+          {/* Conditionally show ModificationSelector */}
+          {!isCollapsed && (
+            <ModificationSelector 
+              options={options.map(({ label, value }) => ({ label, value }))} 
+              onSubmit={handleModificationSubmit} 
+            />
+          )}
         </div>
         <div className="drag-handle" onMouseDown={handleMouseDown} style={{ left: leftPanelWidth - 2 }} />
         <div className="main-content">
