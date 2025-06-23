@@ -1,1 +1,1 @@
-course gen loda lassan etc
+course gen 
