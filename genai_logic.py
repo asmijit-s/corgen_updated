@@ -20,7 +20,8 @@ def call_llm(prompt: Content, system_prompt: str, response_schema: Type[BaseMode
             config=GenerateContentConfig(
                 system_instruction=system_prompt,
                 response_mime_type="application/json",
-                response_schema=response_schema
+                response_schema=response_schema,
+                temperature=0.1
             )
         )
         if debug:
@@ -53,10 +54,9 @@ class CourseOutline(BaseModel):
     learning_outcomes: List[str]
     duration: str
     credits: int
-    suggestions: Optional[str] = None
 
 
-def generate_course_outline(course: CourseInit) -> str:
+def generate_course_outline(course: CourseInit) -> Optional[dict]:
     #- Learning Objectives: {', '.join(course.learning_objectives)} removed this for now 
     prompt = f"""
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses. Based on the following inputs, generate a detailed course outline:
@@ -94,6 +94,11 @@ INSTRUCTIONS FOR GENERATION:
 3) Ensure the description aligns with the learning objectives and outcomes. Avoid adding content not implied or supported by the inputs.
 4) The learning outcomes and description should be appropriate and relevant to the target audience.
 5) Strictly adhere to the output list format specified. The output should contain learning_outcomes NOT learning_objectives.
+
+Output must strictly match the JSON schema provided. 
+Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
+Only return the raw structured object.
+
 """
     user_content = Content(
         role="user",
@@ -102,10 +107,11 @@ INSTRUCTIONS FOR GENERATION:
         ]
     )
     response = call_llm(prompt=user_content, system_prompt=prompt, response_schema=CourseOutline)
-    return json.dumps(response, indent=2) if response is not None else "Nothing was generated. Please try again."
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
 
-def redo_course_outline(course: CourseInit, prev_outline: CourseOutline, user_suggestion: str) -> str:
+
+def redo_course_outline(course: CourseInit, prev_outline: CourseOutline, user_suggestion: str) -> Optional[dict]:
     """
     Regenerate the course outline based on user feedback/suggestions.
     """
@@ -143,6 +149,11 @@ Strictly return the revised outline as a JSON object matching this schema:
 - learning_outcomes
 - duration
 - credits
+
+Output must strictly match the JSON schema provided. 
+Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
+Only return the raw structured object.
+
 """
 
     # Construct the user message (the suggestion)
@@ -154,7 +165,7 @@ Strictly return the revised outline as a JSON object matching this schema:
         system_prompt=system_prompt,
         response_schema=CourseOutline
     )
-    return json.dumps(response, indent=2) if response is not None else "Nothing was generated. Please try again."
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
 ############################### MODULE  GENERATION ######################################################
 class Module(BaseModel):
@@ -166,9 +177,8 @@ class Module(BaseModel):
 class ModuleSet(BaseModel):
     course_id: str
     modules: List[Module]
-    suggestions: Optional[str] = None
 
-def generate_modules(course_outline: CourseOutline) -> str:
+def generate_modules(course_outline: CourseOutline) -> Optional[dict]:
     system_prompt = """
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses.Based on the given course outline, generate a logical set of course modules that progressively build on each other.
 
@@ -189,6 +199,11 @@ You are a course design assistant helping Subject Matter Experts (SMEs) design h
 Return a JSON object with:
 - course_id
 - modules: list of module objects (title, description, module_hours, suggestions)
+
+Output must strictly match the JSON schema provided. 
+Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
+Only return the raw structured object.
+
 """
 
     user_content = Content(
@@ -202,10 +217,10 @@ Return a JSON object with:
 
     response = call_llm(prompt=user_content, system_prompt=system_prompt, response_schema=ModuleSet)
 
-    return json.dumps(response, indent=2) if response is not None else "Nothing was generated. Please try again."
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
 
-def redo_modules(course_outline: CourseOutline, prev_modules: ModuleSet, user_suggestion: str) -> str:
+def redo_modules(course_outline: CourseOutline, prev_modules: ModuleSet, user_suggestion: str) -> Optional[dict]:
     system_prompt = """
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses. You are given a previously generated set of course modules and a course outline.
 Now, the user has provided a suggestion to modify or improve these modules.
@@ -222,6 +237,11 @@ Use this suggestion to regenerate the modules appropriately. You may revise modu
 Strictly return the revised modules as a JSON object with:
 - course_id
 - modules: list of module objects (module_title, description, module_hours, suggestions)
+
+Output must strictly match the JSON schema provided. 
+Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
+Only return the raw structured object.
+
 """
 
     user_content = Content(
@@ -239,7 +259,7 @@ Strictly return the revised modules as a JSON object with:
         response_schema=ModuleSet
     )
 
-    return json.dumps(response, indent=2) if response is not None else "Nothing was generated. Please try again."
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
 ################################# SUBMODULE GENERATION ######################################################
 class Submodule(BaseModel):
@@ -250,9 +270,8 @@ class Submodule(BaseModel):
 class SubmoduleSet(BaseModel):
     module_id: str
     submodules: List[Submodule]
-    suggestions: Optional[str] = None
 
-def generate_submodules(module: Module) -> str:
+def generate_submodules(module: Module) -> Optional[dict]:
     system_prompt = """
     You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses. Based on the provided module details, generate a set of submodules that break down the module into smaller, focused learning units.
     ### TASK:
@@ -275,6 +294,11 @@ def generate_submodules(module: Module) -> str:
     Return a JSON object with:
     - module_id: the ID of the parent module
     - submodules: list of submodule objects (submodule_title, submodule_description)
+
+    Output must strictly match the JSON schema provided. 
+Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
+Only return the raw structured object.
+
     """
     user_content=Content(
             role="user",
@@ -289,9 +313,9 @@ def generate_submodules(module: Module) -> str:
         response_schema=SubmoduleSet
     )
 
-    return json.dumps(response, indent=2) if response is not None else "Nothing was generated. Please try again."
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
-def redo_submodules(module: Module, prev_submodules: SubmoduleSet, user_suggestion: str) -> str:
+def redo_submodules(module: Module, prev_submodules: SubmoduleSet, user_suggestion: str) -> Optional[dict]:
     system_prompt = """
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses. You are given a previously generated set of submodules for a course module.
 Now, the user has provided a suggestion to modify or improve these submodules.
@@ -306,6 +330,11 @@ Now, the user has provided a suggestion to modify or improve these submodules.
 Strictly return the revised submodules as a JSON object with:
 - module_id
 - submodules: list of submodule objects (submodule_title, submodule_description)
+
+Output must strictly match the JSON schema provided. 
+Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
+Only return the raw structured object.
+
 """
 
     user_content = Content(
@@ -323,7 +352,7 @@ Strictly return the revised submodules as a JSON object with:
         response_schema=SubmoduleSet
     )
 
-    return json.dumps(response, indent=2) if response is not None else "Nothing was generated. Please try again."
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 ################################# ACTIVITY GENERATION ######################################################
 class Activity(BaseModel):
     activity_name: str
@@ -333,9 +362,8 @@ class Activity(BaseModel):
 
 class ActivitySet(BaseModel):
     activities: List[Activity]
-    suggestions: Optional[str] = None
 
-def generate_activities(submodule_name: str, submodule_description: str, activity_types: str, user_instructions: Optional[str] = None) -> str:
+def generate_activities(submodule_name: str, submodule_description: str, activity_types: str, user_instructions: Optional[str] = None) -> Optional[dict]:
     system_prompt = f"""
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses.
 
@@ -362,6 +390,11 @@ Return the result strictly as a **JSON array** of activity objects. Each object 
 - "activity_type": One of the types provided (Lecture, Quiz, Assessment, Reading Material, Lab)
 
 Now, generate the activity list based on the inputs provided.
+
+Output must strictly match the JSON schema provided. 
+Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
+Only return the raw structured object.
+
 """
 
     user_content = Content(
@@ -377,14 +410,14 @@ Now, generate the activity list based on the inputs provided.
         response_schema=ActivitySet
     )
 
-    return json.dumps(response, indent=2) if response is not None else "Nothing was generated. Please try again."
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
 def redo_activities(
     existing_activities: List[Dict],
     submodule_name: str,
     submodule_description: str,
     user_suggestion: str
-) -> str:
+) -> Optional[dict]:
     system_prompt = f"""
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses.
 
@@ -416,6 +449,11 @@ Return a JSON array of activity objects with the following fields:
 - "activity_type"
 
 Return only the updated JSON array. No extra explanation.
+
+Output must strictly match the JSON schema provided. 
+Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
+Only return the raw structured object.
+
 """
 
     user_content = Content(
@@ -433,12 +471,13 @@ Return only the updated JSON array. No extra explanation.
         response_schema=ActivitySet
     )
 
-    return json.dumps(response, indent=2) if response is not None else "Nothing was generated. Please try again."
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
 ########################################## STAGE SUGGESTIONS ########################################################
 class SuggestionOutput(BaseModel):
     suggestions: List[str]
     message: str
+
 from enum import Enum
 
 class Stage(str, Enum):
@@ -447,7 +486,7 @@ class Stage(str, Enum):
     submodule = "submodule"
     activity = "activity"
 
-def get_stage_suggestions(stage: Stage, context: str, feedback_mode: str = "light"):
+def get_stage_suggestions(stage: Stage, context: str, feedback_mode: str = "light") -> Optional[dict]:
     prompt = f"""
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses.
 
@@ -476,16 +515,17 @@ Read the stage instructions carefully.
     try:
         response = llmclient.models.generate_content(
             model="gemini-2.5-flash",
-            contents=context,
+            contents=[Content(role="user", parts=[Part(text=context)])],
             config=GenerateContentConfig(
                 system_instruction=prompt,
                 response_mime_type='application/json',
                 response_schema=SuggestionOutput
             )
         )
-        return response.text or ""
+        return json.loads(response.text) if response.text else {}
     except Exception as e:
         return {"error": str(e)}
+
 
 
 

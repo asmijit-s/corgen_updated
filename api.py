@@ -1,66 +1,40 @@
-from fastapi import APIRouter, HTTPException, Body
-from pydantic import BaseModel
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, ValidationError
 from genai_logic import (
-    CourseInit, CourseOutline, Module, ModuleSet, SubmoduleSet,
-    generate_course_outline, redo_course_outline,
-    generate_modules, redo_modules,
-    generate_submodules, redo_submodules,
-    generate_activities, redo_activities,
-    Stage, get_stage_suggestions
+    CourseInit,
+    CourseOutline,
+    ModuleSet,
+    Module,
+    SubmoduleSet,
+    Submodule,
+    ActivitySet,
+    generate_course_outline,
+    redo_course_outline,
+    generate_modules,
+    redo_modules,
+    generate_submodules,
+    redo_submodules,
+    generate_activities,
+    redo_activities,
+    get_stage_suggestions,
+    Stage
 )
+import json
+import logging
+from typing import Optional
 
 router = APIRouter()
 
-# --------------------------- COURSE OUTLINE ---------------------------
+# Configure logging
+logger = logging.getLogger("course_api")
+logging.basicConfig(level=logging.INFO)
 
-@router.post("/generate/outline")
-def api_generate_course_outline(course: CourseInit):
-    result = generate_course_outline(course)
-    return {"result": result}
+# In-memory course state for tracking previous stages
+course_state = {}
 
-@router.post("/redo/outline")
-def api_redo_course_outline(
-    course: CourseInit,
-    prev_outline: CourseOutline,
-    suggestion: str = Body(...)
-):
-    result = redo_course_outline(course, prev_outline, suggestion)
-    return {"result": result}
-
-# --------------------------- MODULES ---------------------------
-
-@router.post("/generate/modules")
-def api_generate_modules(course_outline: CourseOutline):
-    result = generate_modules(course_outline)
-    return {"result": result}
-
-@router.post("/redo/modules")       
-def api_redo_modules(
-    course_outline: CourseOutline,
-    prev_modules: ModuleSet,
-    suggestion: str = Body(...)
-):
-    result = redo_modules(course_outline, prev_modules, suggestion)
-    return {"result": result}
-
-# --------------------------- SUBMODULES ---------------------------
-
-@router.post("/generate/submodules")
-def api_generate_submodules(module: dict):
-    result = generate_submodules(Module(**module))
-    return {"result": result}
-
-@router.post("/redo/submodules")
-def api_redo_submodules(
-    module: dict,
-    prev_submodules: dict,
-    suggestion: str = Body(...)
-):
-    result = redo_submodules(Module(**module), SubmoduleSet(**prev_submodules), suggestion)
-    return {"result": result}
-
-# --------------------------- ACTIVITIES ---------------------------
+class RedoRequest(BaseModel):
+    course_id: str
+    user_message: str
 
 class ActivityRequest(BaseModel):
     submodule_name: str
@@ -68,44 +42,147 @@ class ActivityRequest(BaseModel):
     activity_types: str
     user_instructions: Optional[str] = None
 
-@router.post("/generate/activities")
-def api_generate_activities(req: ActivityRequest):
-    result = generate_activities(
-        submodule_name=req.submodule_name,
-        submodule_description=req.submodule_description,
-        activity_types=req.activity_types,
-        user_instructions=req.user_instructions
-    )
-    return {"result": result}
+def as_json(obj: BaseModel | dict) -> str:
+    return json.dumps(obj.model_dump() if isinstance(obj, BaseModel) else obj, indent=2)
 
-class RedoActivityRequest(BaseModel):
-    existing_activities: List[dict]
-    submodule_name: str
-    submodule_description: str
-    suggestion: str
+def parse_result(result_str: str | None, model: type[BaseModel]) -> BaseModel:
+    if not result_str:
+        logger.error("LLM returned no result.")
+        raise HTTPException(status_code=500, detail="No result returned from LLM")
+    try:
+        raw_data = json.loads(result_str)
+        validated = model.model_validate(raw_data)
+        return validated
+    except json.JSONDecodeError as e:
+        logger.exception("Failed to parse LLM result as JSON.")
+        raise HTTPException(status_code=500, detail="Invalid result format from LLM")
+    except ValidationError as ve:
+        logger.exception("Parsed result failed schema validation.")
+        raise HTTPException(status_code=500, detail=f"Schema validation failed: {ve.errors()}")
+
+@router.post("/generate/outline")
+def generate_outline(course: CourseInit):
+    logger.info("Generating course outline...")
+    result_str = generate_course_outline(course)
+    if isinstance(result_str, dict):
+        result_str = json.dumps(result_str)
+    result = parse_result(result_str, CourseOutline)
+    course_state[course.course_id] = {
+        "course_init": course.model_dump(),
+        "outline": result
+    }
+    suggestions = get_stage_suggestions(Stage.outline, as_json(result))
+    return {"result": result, "suggestions": suggestions}
+
+@router.post("/redo/outline")
+def redo_outline(payload: RedoRequest):
+    logger.info("Redoing outline...")
+    state = course_state.get(payload.course_id)
+    if not state or "outline" not in state or "course_init" not in state:
+        raise HTTPException(status_code=400, detail="No previous outline or course found for this course ID")
+    course_init_obj = CourseInit(**state["course_init"])
+    outline_obj = state["outline"]
+    result_str = redo_course_outline(course_init_obj, outline_obj, payload.user_message)
+    if isinstance(result_str, dict):
+        result_str = json.dumps(result_str)
+    result = parse_result(result_str, CourseOutline)
+    course_state[payload.course_id]["outline"] = result
+    suggestions = get_stage_suggestions(Stage.outline, as_json(result))
+    return {"result": result, "suggestions": suggestions}
+
+@router.post("/generate/modules")
+def generate_module(course_outline: CourseOutline):
+    logger.info("Generating modules...")
+    result_str = generate_modules(course_outline)
+    if isinstance(result_str, dict):
+        result_str = json.dumps(result_str)
+    result = parse_result(result_str, ModuleSet)
+    course_state[course_outline.course_id]["modules"] = result
+    suggestions = get_stage_suggestions(Stage.module, as_json(result))
+    return {"result": result, "suggestions": suggestions}
+
+@router.post("/redo/modules")
+def redo_module(payload: RedoRequest):
+    logger.info("Redoing modules...")
+    state = course_state.get(payload.course_id)
+    if not state or "modules" not in state or "outline" not in state:
+        raise HTTPException(status_code=400, detail="No previous modules or outline found for this course ID")
+    outline_obj = CourseOutline(**state["outline"])
+    modules_obj = ModuleSet(**state["modules"])
+    result_str = redo_modules(outline_obj, modules_obj, payload.user_message)
+    if isinstance(result_str, dict):
+        result_str = json.dumps(result_str)
+    result = parse_result(result_str, ModuleSet)
+    course_state[payload.course_id]["modules"] = result
+    suggestions = get_stage_suggestions(Stage.module, as_json(result))
+    return {"result": result, "suggestions": suggestions}
+
+@router.post("/generate/submodules")
+def generate_submodule(module: Module):
+    logger.info("Generating submodules...")
+    result_str = generate_submodules(module)
+    if isinstance(result_str, dict):
+        result_str = json.dumps(result_str)
+    result = parse_result(result_str, SubmoduleSet)
+    course_state[module.module_id] = course_state.get(module.module_id, {})
+    course_state[module.module_id]["submodules"] = result
+    suggestions = get_stage_suggestions(Stage.submodule, as_json(result))
+    return {"result": result, "suggestions": suggestions}
+
+@router.post("/redo/submodules")
+def redo_submodule(payload: RedoRequest):
+    logger.info("Redoing submodules...")
+    state = course_state.get(payload.course_id)
+    if not state or "submodules" not in state or "modules" not in state:
+        raise HTTPException(status_code=400, detail="No previous submodules or module found for this ID")
+    module_obj = Module(**state["modules"]["modules"][0]) if state["modules"].get("modules") else None
+    if not module_obj:
+        raise HTTPException(status_code=400, detail="Module information incomplete.")
+    submodule_set_obj = SubmoduleSet(**state["submodules"])
+    result_str = redo_submodules(module_obj, submodule_set_obj, payload.user_message)
+    if isinstance(result_str, dict):
+        result_str = json.dumps(result_str)
+    result = parse_result(result_str, SubmoduleSet)
+    course_state[payload.course_id]["submodules"] = result
+    suggestions = get_stage_suggestions(Stage.submodule, as_json(result))
+    return {"result": result, "suggestions": suggestions}
+
+@router.post("/generate/activities")
+def generate_activity(payload: ActivityRequest):
+    logger.info("Generating activities...")
+    result_str = generate_activities(
+        payload.submodule_name,
+        payload.submodule_description,
+        payload.activity_types,
+        payload.user_instructions
+    )
+    if isinstance(result_str, dict):
+        result_str = json.dumps(result_str)
+    result = parse_result(result_str, ActivitySet)
+    course_state[payload.submodule_name] = course_state.get(payload.submodule_name, {})
+    course_state[payload.submodule_name]["activities"] = result
+    suggestions = get_stage_suggestions(Stage.activity, as_json(result))
+    return {"result": result, "suggestions": suggestions}
 
 @router.post("/redo/activities")
-def api_redo_activities(req: RedoActivityRequest):
-    result = redo_activities(
-        existing_activities=req.existing_activities,
-        submodule_name=req.submodule_name,
-        submodule_description=req.submodule_description,
-        user_suggestion=req.suggestion
+def redo_activity(payload: RedoRequest):
+    logger.info("Redoing activities...")
+    state = course_state.get(payload.course_id)
+    if not state or "activities" not in state or "submodules" not in state:
+        raise HTTPException(status_code=400, detail="No previous activities or submodule context found for this ID")
+    submodule_data = state["submodules"]["submodules"][0] if state["submodules"].get("submodules") else None
+    if not submodule_data:
+        raise HTTPException(status_code=400, detail="Submodule information incomplete.")
+    activities = state["activities"]["activities"]
+    result_str = redo_activities(
+        activities,
+        submodule_data["submodule_title"],
+        submodule_data["submodule_description"],
+        payload.user_message
     )
-    return {"result": result}
-
-# --------------------------- STAGE SUGGESTIONS ---------------------------
-
-class StageSuggestionRequest(BaseModel):
-    stage: Stage
-    context: str
-    feedback_mode: Optional[str] = "light"
-
-@router.post("/suggestions/stage")
-def api_stage_suggestions(req: StageSuggestionRequest):
-    suggestions = get_stage_suggestions(
-        stage=req.stage,
-        context=req.context,
-        feedback_mode=req.feedback_mode if req.feedback_mode is not None else "light"
-    )
-    return {"suggestions": suggestions}
+    if isinstance(result_str, dict):
+        result_str = json.dumps(result_str)
+    result = parse_result(result_str, ActivitySet)
+    course_state[payload.course_id]["activities"] = result
+    suggestions = get_stage_suggestions(Stage.activity, as_json(result))
+    return {"result": result, "suggestions": suggestions}
