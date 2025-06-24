@@ -81,19 +81,19 @@ const BlueprintPage = () => {
   course.outline.learning_outcomes.forEach(o => addText(`• ${o}`, 6));
 
   course.modules.forEach((mod, mIdx) => {
-    addHeading(`\nModule ${mIdx + 1}: ${mod.moduleTitle}`, 0, 13);
-    addText(mod.moduleDescription, 4);
-    addText(`Hours: ${mod.moduleHours}`, 4);
+    addHeading(`\nModule ${mIdx + 1}: ${mod.module_title}`, 0, 13);
+    addText(mod.module_description, 4);
+    addText(`Hours: ${mod.module_hours}`, 4);
 
     mod.submodules.forEach((sub, sIdx) => {
-      addHeading(`\n  Submodule ${sIdx + 1}: ${sub.submoduleName}`, 6, 12);
-      addText(sub.submoduleDescription, 8);
+      addHeading(`\n  Submodule ${sIdx + 1}: ${sub.submodule_title}`, 6, 12);
+      addText(sub.submodule_description, 8);
 
       sub.activities.forEach((act, aIdx) => {
-        addHeading(`\n    Activity ${aIdx + 1}: ${act.activityName}`, 10, 11);
-        addText(`Type: ${act.activityType}`, 12);
-        addText(`Objective: ${act.activityObjective}`, 12);
-        addText(`Description: ${act.activityDescription}`, 12);
+        addHeading(`\n    Activity ${aIdx + 1}: ${act.activity_name}`, 10, 11);
+        addText(`Type: ${act.activity_type}`, 12);
+        addText(`Objective: ${act.activity_objective}`, 12);
+        addText(`Description: ${act.activity_description}`, 12);
       });
     });
   });
@@ -275,8 +275,8 @@ const BlueprintPage = () => {
                   <span className="toggle-icon-blueprint">
                     {expandedModules[modIdx] ? <FiChevronUp /> : <FiChevronDown />}
                   </span>
-                  <h3>{module.moduleTitle}</h3>
-                  <span className="module-hours-blueprint">{module.moduleHours} hours</span>
+                  <h3>{module.module_title}</h3>
+                  <span className="module-hours-blueprint">{module.module_hours}</span>
                 </div>
                 <button 
                   className="edit-btn-blueprint"
@@ -296,23 +296,23 @@ const BlueprintPage = () => {
                       <div className="form-group-blueprint">
                         <label>Module Title</label>
                         <input
-                          value={module.moduleTitle}
-                          onChange={(e) => handleChange(['modules', modIdx, 'moduleTitle'], e.target.value)}
+                          value={module.module_title}
+                          onChange={(e) => handleChange(['modules', modIdx, 'module_title'], e.target.value)}
                         />
                       </div>
                       <div className="form-group-blueprint">
                         <label>Description</label>
                         <textarea
-                          value={module.moduleDescription}
-                          onChange={(e) => handleChange(['modules', modIdx, 'moduleDescription'], e.target.value)}
+                          value={module.module_description}
+                          onChange={(e) => handleChange(['modules', modIdx, 'module_description'], e.target.value)}
                         />
                       </div>
                       <div className="form-group-blueprint">
                         <label>Hours</label>
                         <input
                           type="number"
-                          value={module.moduleHours}
-                          onChange={(e) => handleChange(['modules', modIdx, 'moduleHours'], e.target.value)}
+                          value={module.module_hours}
+                          onChange={(e) => handleChange(['modules', modIdx, 'module_hours'], e.target.value)}
                         />
                       </div>
                       <div className="form-buttons-blueprint">
@@ -322,7 +322,7 @@ const BlueprintPage = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="module-description-blueprint">{module.moduleDescription}</div>
+                      <div className="module-description-blueprint">{module.module_description}</div>
                       
                       <div className="submodules-list-blueprint">
                         {module.submodules.map((submodule, subIdx) => (
@@ -335,7 +335,7 @@ const BlueprintPage = () => {
                                 <span className="toggle-icon-blueprint">
                                   {expandedSubmodules[`${modIdx}-${subIdx}`] ? <FiChevronUp /> : <FiChevronDown />}
                                 </span>
-                                <h4>{submodule.submoduleName}</h4>
+                                <h4>{submodule.submodule_title}</h4>
                                 <span className="activity-count-blueprint">
                                   {submodule.activities?.length || 0} activities
                                 </span>
@@ -358,15 +358,15 @@ const BlueprintPage = () => {
                                     <div className="form-group-blueprint">
                                       <label>Submodule Name</label>
                                       <input
-                                        value={submodule.submoduleName}
-                                        onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'submoduleName'], e.target.value)}
+                                        value={submodule.submodule_title}
+                                        onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'submodule_title'], e.target.value)}
                                       />
                                     </div>
                                     <div className="form-group-blueprint">
                                       <label>Description</label>
                                       <textarea
-                                        value={submodule.submoduleDescription}
-                                        onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'submoduleDescription'], e.target.value)}
+                                        value={submodule.submodule_description}
+                                        onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'submodule_description'], e.target.value)}
                                       />
                                     </div>
                                     <div className="form-buttons-blueprint">
@@ -376,18 +376,18 @@ const BlueprintPage = () => {
                                   </div>
                                 ) : (
                                   <>
-                                    <div className="submodule-description-blueprint">{submodule.submoduleDescription}</div>
+                                    <div className="submodule-description-blueprint">{submodule.submodule_description}</div>
                                     
                                     <div className="activities-list-blueprint">
                                       {submodule.activities?.map((activity, actIdx) => (
                                         <div key={actIdx} className="activity-card-blueprint">
                                           <div className="activity-header-blueprint">
                                             <div className="activity-type-blueprint" style={{ 
-                                              backgroundColor: getTypeColor(activity.activityType)
+                                              backgroundColor: getTypeColor(activity.activity_type)
                                             }}>
-                                              {activity.activityType}
+                                              {activity.activity_type}
                                             </div>
-                                            <h5>{activity.activityName}</h5>
+                                            <h5>{activity.activity_name}</h5>
                                             <button 
                                               className="edit-btn-blueprint"
                                               onClick={() => setEditing({ ...editing, activity: `${modIdx}-${subIdx}-${actIdx}` })}
@@ -401,15 +401,15 @@ const BlueprintPage = () => {
                                               <div className="form-group-blueprint">
                                                 <label>Activity Name</label>
                                                 <input
-                                                  value={activity.activityName}
-                                                  onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'activities', actIdx, 'activityName'], e.target.value)}
+                                                  value={activity.activity_name}
+                                                  onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'activities', actIdx, 'activity_name'], e.target.value)}
                                                 />
                                               </div>
                                               <div className="form-group-blueprint">
                                                 <label>Type</label>
                                                 <select
-                                                  value={activity.activityType}
-                                                  onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'activities', actIdx, 'activityType'], e.target.value)}
+                                                  value={activity.activity_type}
+                                                  onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'activities', actIdx, 'activity_type'], e.target.value)}
                                                 >
                                                   <option value="lecture">Lecture</option>
                                                   <option value="quiz">Quiz</option>
@@ -421,15 +421,15 @@ const BlueprintPage = () => {
                                               <div className="form-group-blueprint">
                                                 <label>Description</label>
                                                 <textarea
-                                                  value={activity.activityDescription}
-                                                  onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'activities', actIdx, 'activityDescription'], e.target.value)}
+                                                  value={activity.activity_description}
+                                                  onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'activities', actIdx, 'activity_description'], e.target.value)}
                                                 />
                                               </div>
                                               <div className="form-group-blueprint">
                                                 <label>Objective</label>
                                                 <textarea
-                                                  value={activity.activityObjective}
-                                                  onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'activities', actIdx, 'activityObjective'], e.target.value)}
+                                                  value={activity.activity_objective}
+                                                  onChange={(e) => handleChange(['modules', modIdx, 'submodules', subIdx, 'activities', actIdx, 'activity_objective'], e.target.value)}
                                                 />
                                               </div>
                                               <div className="form-buttons-blueprint">

@@ -25,7 +25,7 @@ const SubmodulesPage = () => {
     const sub = module.submodules[index];
     setEditingIndex(index);
     setEditForm({
-      name: sub.submoduleName,
+      name: sub.submodule_title,
       description: sub.submoduleDescription
     });
   };
@@ -33,7 +33,7 @@ const SubmodulesPage = () => {
   const handleSave = () => {
     const updatedModule = { ...module };
     updatedModule.submodules[editingIndex] = {
-      submoduleName: editForm.name,
+      submodule_title: editForm.name,
       submoduleDescription: editForm.description
     };
 
@@ -65,7 +65,7 @@ const SubmodulesPage = () => {
     if (!updatedModule.submodules) updatedModule.submodules = [];
     
     updatedModule.submodules.push({
-      submoduleName: newSubmodule.name,
+      submodule_title: newSubmodule.name,
       submoduleDescription: newSubmodule.description
     });
 
@@ -90,7 +90,7 @@ const SubmodulesPage = () => {
   return (
     <div className="modules-container">
       <div className="modules-header">
-        <h1>{module.moduleTitle}</h1>
+        <h1>{module.module_title}</h1>
         <button 
           className="add-module-btn" 
           onClick={() => setShowAddModal(true)}
@@ -105,8 +105,8 @@ const SubmodulesPage = () => {
         </button>
       </div>
 
-      <div className="module-description">{module.moduleDescription}</div>
-      <div className="module-hours">Duration: <span>{module.moduleHours}</span> hours</div>
+      <div className="module-description">{module.module_description}</div>
+      <div className="module-hours">Duration: <span>{module.module_hours}</span> hours</div>
 
       <div className="submodules-list">
         {module.submodules?.map((submodule, index) => (
@@ -142,7 +142,7 @@ const SubmodulesPage = () => {
             ) : (
               <>
                 <div className="module-header">
-                  <h3 className="module-title">{submodule.submoduleName}</h3>
+                  <h3 className="module-title">{submodule.submodule_title}</h3>
                   <div>
                     <button className="edit-btn" onClick={() => handleEdit(index)}>
                       Edit
@@ -152,7 +152,7 @@ const SubmodulesPage = () => {
                     </button>
                   </div>
                 </div>
-                <div className="module-description">{submodule.submoduleDescription}</div>
+                <div className="module-description">{submodule.submodule_description}</div>
               </>
             )}
           </div>

@@ -24,9 +24,9 @@ const ModulesPage = () => {
     if (!mod) return;
     setEditingModule(index);
     setEditForm({
-      title: mod.moduleTitle || '',
-      description: mod.moduleDescription || '',
-      hours: mod.moduleHours || 0
+      title: mod.module_title || '',
+      description: mod.module_description || '',
+      hours: mod.module_hours || 0
     });
   };
 
@@ -69,6 +69,7 @@ const ModulesPage = () => {
         localStorage.setItem("generatedCourse", JSON.stringify(parsed));
     }
     window.location.reload();
+
     };
 
 
@@ -172,14 +173,14 @@ const ModulesPage = () => {
             ) : (
               <>
                 <div className="module-header">
-                  <h3 className="module-title">{module.moduleTitle}</h3>
+                  <h3 className="module-title">{module.module_title}</h3>
                   <div>
                     <button className="edit-btn" onClick={() => handleEdit(index)}>Edit</button>
                     <button className="delete-btn" onClick={() => handleDelete(index)}>Delete</button>
                   </div>
                 </div>
-                <div className="module-description">{module.moduleDescription}</div>
-                <div className="module-hours">Duration: <span>{module.moduleHours}</span> hours</div>
+                <div className="module-description">{module.module_description}</div>
+                <div className="module-hours">Duration: <span>{module.module_hours}</span></div>
               </>
             )}
           </div>

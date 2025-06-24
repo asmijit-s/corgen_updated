@@ -20,28 +20,28 @@ const ModulesDropdownPage = () => {
     } else {
       const simulatedModules = [
         {
-          moduleTitle: "Supervised Learning",
-          moduleHours: 10,
+          module_title: "Supervised Learning",
+          module_hours: 10,
           submodules: [
             {
-              submoduleName: "Introduction to Supervised Learning",
-              submoduleDescription:
+              submodule_title: "Introduction to Supervised Learning",
+              submodule_description:
                 "This submodule lays the groundwork for supervised learning, explaining its core principles."
             },
             {
-              submoduleName: "Understanding Regression Models",
-              submoduleDescription:
+              submodule_title: "Understanding Regression Models",
+              submodule_description:
                 "Covers basic concepts and types of regression problems used in supervised learning."
             }
           ]
         },
         {
-          moduleTitle: "Unsupervised Learning",
-          moduleHours: 8,
+          module_title: "Unsupervised Learning",
+          module_hours: 8,
           submodules: [
             {
-              submoduleName: "Clustering Basics",
-              submoduleDescription: "Explore algorithms like K-means and hierarchical clustering."
+              submodule_title: "Clustering Basics",
+              submodule_description: "Explore algorithms like K-means and hierarchical clustering."
             }
           ]
         }
@@ -78,8 +78,8 @@ const ModulesDropdownPage = () => {
               onClick={() => toggleModule(moduleIndex)}
             >
               <div className="module-title-container">
-                <h3>{module.moduleTitle}</h3>
-                <span className="module-hours">{module.moduleHours} hours</span>
+                <h3>{module.module_title}</h3>
+                <span className="module-hours">{module.module_hours} hours</span>
               </div>
               <div className="module-actions">
                 {expandedModule === moduleIndex ? <FiChevronUp /> : <FiChevronDown />}
@@ -95,8 +95,8 @@ const ModulesDropdownPage = () => {
                       className="submodule-item"
                     >
                       <div className="submodule-info">
-                        <h4>{submodule.submoduleName}</h4>
-                        <p className="submodule-description">{submodule.submoduleDescription}</p>
+                        <h4>{submodule.submodule_title}</h4>
+                        <p className="submodule-description">{submodule.submodule_description}</p>
                       </div>
                       <div className="submodule-actions">
                         <button
