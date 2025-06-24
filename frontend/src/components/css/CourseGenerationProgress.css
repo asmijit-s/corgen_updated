@@ -1,6 +1,7 @@
 .progress-section {
   background-color: white;
-  height: 40vh;
+  min-height: 20vh;
+  height:-webkit-fill-available;
   overflow-y: auto;
   padding: 20px;
 }

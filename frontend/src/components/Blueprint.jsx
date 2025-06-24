@@ -132,9 +132,7 @@ const BlueprintPage = () => {
     });
   };
   const handleSaveAndContinue = () => {
-    if (saveChanges()) {
-      navigate("/generate");
-    }
+    navigate("/generate");
   };
   const cancelEdit = () => {
     setEditing({

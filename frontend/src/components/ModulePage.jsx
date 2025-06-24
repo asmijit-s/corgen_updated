@@ -69,7 +69,6 @@ const ModulesPage = () => {
         localStorage.setItem("generatedCourse", JSON.stringify(parsed));
     }
     window.location.reload();
-
     };
 
 
