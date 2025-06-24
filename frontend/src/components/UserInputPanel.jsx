@@ -51,7 +51,7 @@ const ModificationSelector = ({
 
   return (
     <div className="modification-section">
-      <div className="form-group-modification">
+      {/* <div className="form-group-modification">
         <label className="form-label-modification">{dropdownLabel}</label>
         <select 
           className="select-dropdown-modification" 
@@ -66,7 +66,7 @@ const ModificationSelector = ({
             </option>
           ))}
         </select>
-      </div>
+      </div> */}
 
       <div className="form-group-modification">
         <label className="form-label-modification">{textareaLabel}</label>

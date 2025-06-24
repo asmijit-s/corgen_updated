@@ -13,6 +13,7 @@ import ActivitiesPage from "./components/Activtity.jsx";
 import ModulesDropdownPage from "./components/ModuleDropdown.jsx";
 import BlueprintPage from "./components/Blueprint.jsx";
 import { FiChevronUp, FiChevronDown } from 'react-icons/fi'; // add this at the top
+import NotFoundPage from "./components/NotFound.jsx";
 import "./App.css";
 
 function generateOptionsFromLocalStorage(context = 'outline') {
@@ -176,6 +177,7 @@ function AppContent() {
             <Route path="/activities" element={<ModulesDropdownPage />} />
             <Route path="/activities/:moduleId/:submoduleId" element={<ActivitiesPage />} />
             <Route path="/blueprint" element={<BlueprintPage />} />
+            <Route path="/:nothing" element={<NotFoundPage />} />
           </Routes>
         </div>
       </div>
