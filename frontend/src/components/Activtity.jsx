@@ -74,6 +74,7 @@ const ActivitiesPage = () => {
           const parsed = JSON.parse(stored);
           const submodules = parsed.modules[moduleId].submodules || [];
           submodules[submoduleId].activities = generatedActivities;
+          submodules[submoduleId].suggestions_activities = data.suggestions;
           parsed.modules[moduleId].submodules = submodules;
           localStorage.setItem("generatedCourse", JSON.stringify(parsed));
         }

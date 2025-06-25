@@ -14,6 +14,7 @@ import ModulesDropdownPage from "./components/ModuleDropdown.jsx";
 import BlueprintPage from "./components/Blueprint.jsx";
 import { FiChevronUp, FiChevronDown } from 'react-icons/fi'; // add this at the top
 import NotFoundPage from "./components/NotFound.jsx";
+import SuggestionWidget from "./components/SuggestionBox.jsx";
 import "./App.css";
 
 function generateOptionsFromLocalStorage(context = 'outline') {
@@ -25,7 +26,7 @@ function generateOptionsFromLocalStorage(context = 'outline') {
     const options = Object.keys(data.outline).map(key => ({
       label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       value: key,
-      fullValue: data.outline[key]
+      fullValue: data.outline
     }));
     return [{ label: "All", value: "all", fullValue: data.outline }, ...options];
   }
@@ -54,7 +55,7 @@ function generateOptionsFromLocalStorage(context = 'outline') {
       Array.isArray(data.modules) &&
       data.modules[moduleIndex]?.submodules
     ) {
-      const submods = data.modules[moduleIndex].submodules;
+      // const submods = data.modules[moduleIndex].submodules;
       // Remove `activities` from each submodule
     const submodsWithoutActivities = data.modules[moduleIndex].submodules.map(sub => {
       const { activities, ...rest } = sub;
@@ -153,7 +154,7 @@ function AppContent() {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '8px 12px',
-              backgroundColor: 'rgb(0 160 255)',
+              background: 'linear-gradient(135deg, #6b46c1, #8b5cf6)',
               borderBottom: '1px solid #ddd',
               cursor: 'pointer',
               height: 'fit-content',
@@ -186,6 +187,7 @@ function AppContent() {
             <Route path="/blueprint" element={<BlueprintPage />} />
             <Route path="/:nothing" element={<NotFoundPage />} />
           </Routes>
+          <SuggestionWidget/>
         </div>
       </div>
     </div>
