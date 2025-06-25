@@ -98,7 +98,7 @@ const CourseForm = () => {
 
     // Store result (you can pick `data.result` or whole response)
 localStorage.setItem("generatedCourse", JSON.stringify({ outline: data.result }));
-
+localStorage.setItem("course-init", JSON.stringify(payload));
     navigate("/outline");
 
   } catch (error) {

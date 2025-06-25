@@ -33,9 +33,9 @@ const ModulesPage = () => {
   const handleSave = () => {
     const updatedModules = [...modules];
     updatedModules[editingModule] = {
-      moduleTitle: editForm.title,
-      moduleDescription: editForm.description,
-      moduleHours: parseInt(editForm.hours) || 0
+      modeul_title: editForm.title,
+      modeul_description: editForm.description,
+      modeul_hours: parseInt(editForm.hours) || 0
     };
     setModules(updatedModules);
     setEditingModule(null);
@@ -70,7 +70,7 @@ const ModulesPage = () => {
     }
     window.location.reload();
 
-    };
+  };
 
 
   const handleAddModule = () => {
@@ -91,9 +91,9 @@ const ModulesPage = () => {
       return;
     }
     const moduleToAdd = {
-      moduleTitle: newModule.title,
-      moduleDescription: newModule.description,
-      moduleHours: parseInt(newModule.hours) || 0
+      modeul_title: newModule.title,
+      modeul_description: newModule.description,
+      modeul_hours: parseInt(newModule.hours) || 0
     };
     const updatedModules = [...modules, moduleToAdd];
     setModules(updatedModules);
@@ -106,7 +106,6 @@ const ModulesPage = () => {
         localStorage.setItem("generatedCourse", JSON.stringify(parsed));
     }
     window.location.reload();
-
   };
 
   const handleFinalSave = () => {
@@ -174,7 +173,7 @@ const ModulesPage = () => {
               <>
                 <div className="module-header">
                   <h3 className="module-title">{module.module_title}</h3>
-                  <div>
+                  <div style={{display:'flex'}}>
                     <button className="edit-btn" onClick={() => handleEdit(index)}>Edit</button>
                     <button className="delete-btn" onClick={() => handleDelete(index)}>Delete</button>
                   </div>

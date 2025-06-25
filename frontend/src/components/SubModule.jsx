@@ -143,7 +143,7 @@ const SubmodulesPage = () => {
               <>
                 <div className="module-header">
                   <h3 className="module-title">{submodule.submodule_title}</h3>
-                  <div>
+                  <div style={{display: 'flex'}}>
                     <button className="edit-btn" onClick={() => handleEdit(index)}>
                       Edit
                     </button>

@@ -79,7 +79,7 @@ const ModulesDropdownPage = () => {
             >
               <div className="module-title-container">
                 <h3>{module.module_title}</h3>
-                <span className="module-hours">{module.module_hours} hours</span>
+                <span className="module-hours">{module.module_hours}</span>
               </div>
               <div className="module-actions">
                 {expandedModule === moduleIndex ? <FiChevronUp /> : <FiChevronDown />}
