@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ValidationError
+from typing import List, Optional, Dict
+
 from genai_logic import (
     CourseInit,
     CourseOutline,
@@ -37,9 +39,9 @@ class RedoRequest(BaseModel):
     user_message: str
 
 class ActivityRequest(BaseModel):
-    submodule_name: str
+    submodule_id: str
     submodule_description: str
-    activity_types: str
+    activity_types: List[str]
     user_instructions: Optional[str] = None
 
 def as_json(obj: BaseModel | dict) -> str:
@@ -97,7 +99,8 @@ def generate_module(course_outline: CourseOutline):
     if isinstance(result_str, dict):
         result_str = json.dumps(result_str)
     result = parse_result(result_str, ModuleSet)
-    course_state[course_outline.course_id]["modules"] = result
+    course_entry = course_state.setdefault(course_outline.course_id, {})
+    course_entry["modules"] = result    
     suggestions = get_stage_suggestions(Stage.module, as_json(result))
     return {"result": result, "suggestions": suggestions}
 
@@ -121,9 +124,11 @@ def redo_module(payload: RedoRequest):
 def generate_submodule(module: Module):
     logger.info("Generating submodules...")
     result_str = generate_submodules(module)
-    if isinstance(result_str, dict):
-        result_str = json.dumps(result_str)
-    result = parse_result(result_str, SubmoduleSet)
+    if not result_str:
+        raise HTTPException(status_code=400, detail="Failed to generate submodules")
+
+    # No need to parse again if `call_llm` already validated:
+    result = result_str
     course_state[module.module_id] = course_state.get(module.module_id, {})
     course_state[module.module_id]["submodules"] = result
     suggestions = get_stage_suggestions(Stage.submodule, as_json(result))
@@ -149,18 +154,21 @@ def redo_submodule(payload: RedoRequest):
 
 @router.post("/generate/activities")
 def generate_activity(payload: ActivityRequest):
+    print("maa chud gyi")
     logger.info("Generating activities...")
-    result_str = generate_activities(
-        payload.submodule_name,
+    result = generate_activities(
+        payload.submodule_id,
         payload.submodule_description,
         payload.activity_types,
         payload.user_instructions
     )
-    if isinstance(result_str, dict):
-        result_str = json.dumps(result_str)
-    result = parse_result(result_str, ActivitySet)
-    course_state[payload.submodule_name] = course_state.get(payload.submodule_name, {})
-    course_state[payload.submodule_name]["activities"] = result
+
+    if not result:
+        raise HTTPException(status_code=400, detail="Failed to generate activities")
+
+    course_state[payload.submodule_id] = course_state.get(payload.submodule_id, {})
+    course_state[payload.submodule_id]["activities"] = result
+
     suggestions = get_stage_suggestions(Stage.activity, as_json(result))
     return {"result": result, "suggestions": suggestions}
 

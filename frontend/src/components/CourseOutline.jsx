@@ -41,71 +41,53 @@ const CourseOutline = () => {
     localStorage.setItem("generatedCourse", JSON.stringify(courseData));
   };
 
-  const handleFinalSave = () => {
-    if (courseData) {
-        setIsSaving(true); // 🔐 disable button
-        const modules = [                                                   //API Response format
-      {
-        "moduleTitle": "Introduction to Machine Learning",
-        "moduleDescription": "Fundamentals of ML, types of learning, and basic concepts.",
-        "moduleHours": 18,
-        "order": 1,
-        "id": "mod_1750611231031_1",
-        "courseId": "ML303"
+  const handleFinalSave = async () => {
+  if (!courseData) return;
+  setIsSaving(true);
+
+  try {
+    // Call your backend to generate modules dynamically
+    const response = await fetch("http://127.0.0.1:8000/course/generate/modules", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-      {
-        "moduleTitle": "Supervised Learning Algorithms",
-        "moduleDescription": "Linear Regression, Logistic Regression, Support Vector Machines, Decision Trees.",
-        "moduleHours": 18,
-        "order": 2,
-        "id": "mod_1750611231031_2",
-        "courseId": "ML303"
-      },
-      {
-        "moduleTitle": "Unsupervised Learning Methods",
-        "moduleDescription": "Clustering (K-means, hierarchical), dimensionality reduction (PCA).",
-        "moduleHours": 15,
-        "order": 3,
-        "id": "mod_1750611231031_3",
-        "courseId": "ML303"
-      },
-      {
-        "moduleTitle": "Model Evaluation & Selection",
-        "moduleDescription": "Bias-variance tradeoff, cross-validation, hyperparameter tuning.",
-        "moduleHours": 10,
-        "order": 4,
-        "id": "mod_1750611231031_4",
-        "courseId": "ML303"
-      },
-      {
-        "moduleTitle": "Introduction to Deep Learning",
-        "moduleDescription": "Neural networks, backpropagation, and common architectures.",
-        "moduleHours": 6,
-        "order": 5,
-        "id": "mod_1750611231031_5",
-        "courseId": "ML303"
-      },
-      {
-        "moduleTitle": "Deep Learning Architectures",
-        "moduleDescription": "Convolutional Neural Networks (CNNs), Recurrent Neural Networks (RNNs).",
-        "moduleHours": 5,
-        "order": 6,
-        "id": "mod_1750611231031_6",
-        "courseId": "ML303"
-      }
-    ];
+      // 👇 Send the course outline exactly as your backend expects
+      body: JSON.stringify({
+        course_id: courseData.outline.course_id,
+        title: courseData.outline.title,
+        prerequisites: courseData.outline.prerequisites,
+        description: courseData.outline.description,
+        learning_outcomes: courseData.outline.learning_outcomes,
+        duration: courseData.outline.duration,
+        credits: courseData.outline.credits
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate modules: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Modules API response:", data);
+
+    // ✅ Combine outline + modules and save to localStorage
     const updatedCourse = {
       ...courseData,
-      modules: modules // directly set under key "modules"
+      modules: data.result.modules  // <--- use backend result!
     };
-      localStorage.setItem("generatedCourse", JSON.stringify(updatedCourse));
 
-      // Simulate 4 second save delay
-      setTimeout(() => {
-        navigate("/modules");
-      }, 4000);
-    }
-  };
+    localStorage.setItem("generatedCourse", JSON.stringify(updatedCourse));
+
+    navigate("/modules");
+  } catch (error) {
+    console.error(error);
+    alert("Failed to generate modules. Please try again.");
+  } finally {
+    setIsSaving(false);
+  }
+};
+
   const handleDownloadPDF = () => {
     if (!courseData) return;
      setIsDownloading(true); // 🔐 disable button
@@ -172,8 +154,14 @@ const CourseOutline = () => {
     );
   };
 
-  if (!courseData) return <div>Loading course data...</div>;
-
+if (!courseData || !courseData.outline) {
+  return (
+    <div style={{ padding: "20px" }}>
+      <h2>No course outline found.</h2>
+      <p>Please go back and generate a course first.</p>
+    </div>
+  );
+}
   return (
     <div className="course-outline-container">
       <div className="header-section">

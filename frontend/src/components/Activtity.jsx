@@ -3,12 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { FiArrowLeft } from 'react-icons/fi';
 import './css/Activity.css';
 
-const activityTypes = [
-  { value: 'lecture', label: 'Lecture' },
-  { value: 'quiz', label: 'Quiz' },
-  { value: 'assignment', label: 'Assignment' },
-  { value: 'lab', label: 'Lab' },
-  { value: 'reading', label: 'Reading' }
+const activity_types = [
+  { value: "lecture", label: 'Lecture' },
+  { value: "quiz", label: 'Quiz' },
+  { value: "assignment", label: 'Assignment' },
+  { value: "lab", label: 'Lab' },
+  { value: "reading", label: 'Reading' }
 ];
 
 const ActivitiesPage = () => {
@@ -16,13 +16,13 @@ const ActivitiesPage = () => {
   const navigate = useNavigate();
   const [activities, setActivities] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
-  const [editForm, setEditForm] = useState({ activityName: '', activityDescription: '', activityObjective: '', activityType: 'lecture' });
+  const [editForm, setEditForm] = useState({ activity_name: '', activity_description: '', activity_objective: '', activity_type: 'lecture' });
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newActivity, setNewActivity] = useState({ activityName: '', activityDescription: '', activityObjective: '', activityType: 'lecture' });
+  const [newActivity, setNewActivity] = useState({ activity_name: '', activity_description: '', activity_objective: '', activity_type: 'lecture' });
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [guidelines, setGuidelines] = useState('');
   const [showForm, setShowForm] = useState(true);
-
+  const [isGenerating, setIsGenerating] = useState(false);
   useEffect(() => {
     const stored = localStorage.getItem("generatedCourse");
     if (stored) {
@@ -39,50 +39,59 @@ const ActivitiesPage = () => {
     }
     }, [moduleId, submoduleId]);
 
-  const handleGenerateActivities = () => {
-    const mockActivities = [
-      {
-        activityName: "Understanding the Basics of Supervised Learning",
-        activityDescription: "This lecture introduces the fundamental concept of supervised learning...",
-        activityObjective: "Learners will be able to define supervised learning...",
-        activityType: "lecture"
-      },
-      {
-        activityName: "Differentiating Supervised Learning",
-        activityDescription: "This lecture contrasts supervised learning with other paradigms...",
-        activityObjective: "Learners will be able to differentiate supervised learning...",
-        activityType: "lecture"
-      },
-      {
-        activityName: "Common Applications of Supervised Learning",
-        activityDescription: "This lecture explores real-world scenarios...",
-        activityObjective: "Learners will be able to identify applications...",
-        activityType: "lecture"
-      },
-      {
-        activityName: "Supervised Learning Fundamentals Quiz",
-        activityDescription: "This short quiz assesses understanding of supervised learning...",
-        activityObjective: "Learners will be able to answer questions about fundamental concepts...",
-        activityType: "quiz"
-      },
-      {
-        activityName: "Machine Learning Type Identification Quiz",
-        activityDescription: "This quiz asks learners to identify the appropriate learning type...",
-        activityObjective: "Learners will be able to classify scenarios correctly...",
-        activityType: "quiz"
-      }
-    ];
+  const handleGenerateActivities = async () => {
+  try {
+    setIsGenerating(true); // Start loading
+    const stored_conent = localStorage.getItem("generatedCourse");
+    if (stored_conent) {
+      const parsed = JSON.parse(stored_conent);
+      const module = parsed.modules[moduleId];
+      if (module && module.submodules && module.submodules[submoduleId]) {
+        const submodule = module.submodules[submoduleId];
+        const submoduleDescription = submodule.submodule_description;
+        const submodule_id = submodule.submodule_id;
 
-    const stored = localStorage.getItem("generatedCourse");
-    if (!stored) return;
-    const parsed = JSON.parse(stored);
-    const submodules = parsed.modules[moduleId].submodules || [];
-    submodules[submoduleId].activities = mockActivities;
-    parsed.modules[moduleId].submodules = submodules;
-    localStorage.setItem("generatedCourse", JSON.stringify(parsed));
-    setActivities(mockActivities);
-    setShowForm(false);
-  };
+        const response = await fetch("http://localhost:8000/course/generate/activities", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            submodule_id: submodule_id,
+            submodule_description: submoduleDescription,
+            activity_types: selectedTypes,
+            user_instructions: guidelines
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to generate activities");
+        }
+
+        const data = await response.json();
+        const generatedActivities = data.result.activities || [];
+
+        const stored = localStorage.getItem("generatedCourse");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const submodules = parsed.modules[moduleId].submodules || [];
+          submodules[submoduleId].activities = generatedActivities;
+          parsed.modules[moduleId].submodules = submodules;
+          localStorage.setItem("generatedCourse", JSON.stringify(parsed));
+        }
+
+        setActivities(generatedActivities);
+        setShowForm(false);
+        window.location.reload();
+      }
+    }
+  } catch (error) {
+    console.error("Error generating activities:", error);
+    alert("Failed to generate activities. Please try again.");
+  } finally {
+    setIsGenerating(false); // Reset loading
+  }
+};
+
+
 
   const handleEdit = (index) => {
     const activity = activities[index];
@@ -107,13 +116,13 @@ const ActivitiesPage = () => {
   };
 
   const handleAddActivity = () => {
-    if (!newActivity.activityName || !newActivity.activityDescription || !newActivity.activityObjective) {
+    if (!newActivity.activity_name || !newActivity.activity_description || !newActivity.activity_objective) {
       alert("Please fill in all required fields");
       return;
     }
     const updatedActivities = [...activities, { ...newActivity }];
     saveActivities(updatedActivities);
-    setNewActivity({ activityName: '', activityDescription: '', activityObjective: '', activityType: 'lecture' });
+    setNewActivity({ activity_name: '', activity_description: '', activity_objective: '', activity_type: 'lecture' });
     setShowAddModal(false);
     window.location.reload();
   };
@@ -128,7 +137,7 @@ const ActivitiesPage = () => {
     }
   };
 
-  const getActivityTypeColor = (type) => {
+  const getactivity_typeColor = (type) => {
     switch(type) {
       case 'lecture': return '#6b46c1';
       case 'quiz': return '#10b981';
@@ -147,7 +156,7 @@ const ActivitiesPage = () => {
           <div className="form-group">
             <label>Choose Types*</label>
             <div className="checkbox-group">
-              {activityTypes.map(type => (
+              {activity_types.map(type => (
                 <label key={type.value}>
                   <input
                     type="checkbox"
@@ -171,7 +180,15 @@ const ActivitiesPage = () => {
               placeholder="Add instructions for generating activities..."
             />
           </div>
-          <button className="generate-btn" onClick={handleGenerateActivities}>Generate Activities</button>
+          <button
+            className="generate-btn"
+            onClick={handleGenerateActivities}
+            disabled={isGenerating}
+            style={{ opacity: isGenerating ? 0.6 : 1, cursor: isGenerating ? 'not-allowed' : 'pointer' }}
+          >
+            {isGenerating ? "Generating..." : "Generate Activities"}
+          </button>
+
         </div>
       )}
 
@@ -194,23 +211,23 @@ const ActivitiesPage = () => {
                   <div className="activity-edit-form">
                     <div className="form-group">
                       <label>Activity Name*</label>
-                      <input type="text" value={editForm.activityName} onChange={(e) => setEditForm({...editForm, activityName: e.target.value})} />
+                      <input type="text" value={editForm.activity_name} onChange={(e) => setEditForm({...editForm, activity_name: e.target.value})} />
                     </div>
                     <div className="form-group">
                       <label>Activity Type*</label>
-                      <select value={editForm.activityType} onChange={(e) => setEditForm({...editForm, activityType: e.target.value})}>
-                        {activityTypes.map(type => (
+                      <select value={editForm.activity_type} onChange={(e) => setEditForm({...editForm, activity_type: e.target.value})}>
+                        {activity_types.map(type => (
                           <option key={type.value} value={type.value}>{type.label}</option>
                         ))}
                       </select>
                     </div>
                     <div className="form-group">
                       <label>Description*</label>
-                      <textarea value={editForm.activityDescription} onChange={(e) => setEditForm({...editForm, activityDescription: e.target.value})} />
+                      <textarea value={editForm.activity_description} onChange={(e) => setEditForm({...editForm, activity_description: e.target.value})} />
                     </div>
                     <div className="form-group">
                       <label>Objective*</label>
-                      <textarea value={editForm.activityObjective} onChange={(e) => setEditForm({...editForm, activityObjective: e.target.value})} />
+                      <textarea value={editForm.activity_objective} onChange={(e) => setEditForm({...editForm, activity_objective: e.target.value})} />
                     </div>
                     <div className="form-buttons">
                       <button className="save-btn" onClick={handleSave}>Save</button>
@@ -221,9 +238,9 @@ const ActivitiesPage = () => {
                   <>
                     <div className="activity-header">
                       <div style={{display:'flex', justifyContent: 'space-between'}}>
-                        <h3>{activity.activityName}</h3>
-                        <span className="activity-type-badge" style={{ backgroundColor: getActivityTypeColor(activity.activityType) }}>
-                          {activityTypes.find(t => t.value === activity.activityType)?.label || 'Activity'}
+                        <h3>{activity.activity_name}</h3>
+                        <span className="activity-type-badge" style={{ backgroundColor: getactivity_typeColor(activity.activity_type) }}>
+                          {activity_types.find(t => t.value === activity.activity_type)?.label || 'Activity'}
                         </span>
                       </div>
                       <div className="activity-actions">
@@ -231,8 +248,8 @@ const ActivitiesPage = () => {
                         <button className="delete-btn" onClick={() => handleDelete(index)}>Delete</button>
                       </div>
                     </div>
-                    <div className="activity-description">{activity.activityDescription}</div>
-                    <div className="activity-objective"><strong>Objective:</strong> {activity.activityObjective}</div>
+                    <div className="activity-description">{activity.activity_description}</div>
+                    <div className="activity-objective"><strong>Objective:</strong> {activity.activity_objective}</div>
                   </>
                 )}
               </div>
@@ -251,23 +268,23 @@ const ActivitiesPage = () => {
             <h2>Add New Activity</h2>
             <div className="form-group">
               <label>Activity Name*</label>
-              <input type="text" value={newActivity.activityName} onChange={(e) => setNewActivity({...newActivity, activityName: e.target.value})} />
+              <input type="text" value={newActivity.activity_name} onChange={(e) => setNewActivity({...newActivity, activity_name: e.target.value})} />
             </div>
             <div className="form-group">
               <label>Activity Type*</label>
-              <select value={newActivity.activityType} onChange={(e) => setNewActivity({...newActivity, activityType: e.target.value})}>
-                {activityTypes.map(type => (
+              <select value={newActivity.activity_type} onChange={(e) => setNewActivity({...newActivity, activity_type: e.target.value})}>
+                {activity_types.map(type => (
                   <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
             </div>
             <div className="form-group">
               <label>Description*</label>
-              <textarea value={newActivity.activityDescription} onChange={(e) => setNewActivity({...newActivity, activityDescription: e.target.value})} />
+              <textarea value={newActivity.activity_description} onChange={(e) => setNewActivity({...newActivity, activity_description: e.target.value})} />
             </div>
             <div className="form-group">
               <label>Objective*</label>
-              <textarea value={newActivity.activityObjective} onChange={(e) => setNewActivity({...newActivity, activityObjective: e.target.value})} />
+              <textarea value={newActivity.activity_objective} onChange={(e) => setNewActivity({...newActivity, activity_objective: e.target.value})} />
             </div>
             <div className="modal-buttons">
               <button className="save-btn" onClick={handleAddActivity}>Add Activity</button>

@@ -32,7 +32,7 @@ function generateOptionsFromLocalStorage(context = 'outline') {
 
   if (context === 'modules' && data.modules) {
     const options = Object.entries(data.modules).map(([key, value]) => ({
-      label: value.moduleTitle,
+      label: value.module_title,
       value: key,
       fullValue: value
     }));
@@ -50,7 +50,7 @@ function generateOptionsFromLocalStorage(context = 'outline') {
     ) {
       const submods = data.modules[moduleIndex].submodules;
       const options = submods.map((sub, idx) => ({
-        label: sub.submoduleName,
+        label: sub.submodule_title,
         value: `${moduleIndex}_${idx}`,
         fullValue: sub
       }));
@@ -72,7 +72,7 @@ function generateOptionsFromLocalStorage(context = 'outline') {
     ) {
       const activities = data.modules[moduleIndex].submodules[submoduleIndex].activities;
       const options = activities.map((activity, idx) => ({
-        label: activity.activityName || `Activity ${idx + 1}`,
+        label: activity.activity_name || `Activity ${idx + 1}`,
         value: `${moduleIndex}_${submoduleIndex}_${idx}`,
         fullValue: activity
       }));

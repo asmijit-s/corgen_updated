@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './css/CourseForm.css';
 
+
 const CourseForm = () => {
   const [formData, setFormData] = useState({
     title: '',
@@ -63,40 +64,51 @@ const CourseForm = () => {
     setIsValid(allFieldsFilled);
   };
 
-  const handleSubmit = (e) => {
+ const handleSubmit = async (e) => {
   e.preventDefault();
   setIsGenerating(true);
 
-  // Simulate backend generation delay
-  setTimeout(() => {
-    const hardcodedCourseJSON = {
-      message: "Course initialized",
-      course_id: "ML303",
-      outline: {
-        course_id: "ML301",
-        title: "MachineLearning",
-        prerequisites: ["basic programming"],
-        description: "This comprehensive 'Machine Learning' course is tailored for 3rd-year undergraduate students, providing a robust journey from foundational machine learning concepts to advanced algorithms and applications. It aims to equip students with the theoretical knowledge and practical skills necessary to tackle both industry-level challenges and explore research-oriented problems in the field. Students will delve into supervised, unsupervised, and deep learning paradigms, model evaluation, and practical implementation strategies. Basic programming proficiency is a prerequisite for this course.",
-        learning_outcomes: [
-          "Students will be able to articulate the fundamental principles and concepts of various machine learning paradigms, including supervised, unsupervised, and reinforcement learning.",
-          "Students will be able to implement, train, and evaluate a range of machine learning models using common programming libraries for practical applications.",
-          "Students will be able to critically assess and select appropriate machine learning algorithms for diverse real-world datasets and problems encountered in industry.",
-          "Students will be able to analyze and interpret the performance metrics of machine learning models, identifying potential biases and limitations.",
-          "Students will be able to understand the mathematical underpinnings of advanced machine learning techniques, preparing them for further research exploration.",
-          "Students will be able to apply problem-solving skills to complex machine learning scenarios, demonstrating an understanding of both theoretical foundations and practical deployment considerations."
-        ],
-        duration: "12 weeks",
-        credits: 5
-      }
+  try {
+    const payload = {
+      course_id: `course_${Date.now()}`,
+      title: formData.title,
+      prerequisites: formData.prerequisites.split(',').map(p => p.trim()),
+      description: formData.description,
+      learning_objectives: formData.objectives.split('.').map(o => o.trim()).filter(o => o),
+      target_audience: formData.audience,
+      duration: `${formData.totalWeeks} weeks`,
+      credits: formData.creditType === "calculated" ? calculatedCredits : parseFloat(formData.manualCredits)
     };
 
-    // Save to localStorage
-    localStorage.setItem("generatedCourse", JSON.stringify(hardcodedCourseJSON));
+    const response = await fetch("http://127.0.0.1:8000/course/generate/outline", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
 
-    // Navigate to /outline
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("API response:", data);
+
+
+    // Store result (you can pick `data.result` or whole response)
+localStorage.setItem("generatedCourse", JSON.stringify({ outline: data.result }));
+
     navigate("/outline");
-  }, 2000); // simulate loading time
+
+  } catch (error) {
+    console.error(error);
+    alert("Failed to generate course. Please try again.");
+  } finally {
+    setIsGenerating(false);
+  }
 };
+
 
   return (
     <div className="form-column">
@@ -224,16 +236,19 @@ const CourseForm = () => {
         <div className="form-group">
           <label className="form-label">Credits<span  style={{color:'red'}}>*</span></label>
           <select
-            className="form-input form-select"
-            name="creditType"
-            value={formData.creditType}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Choose between calculated or manual credit hours<span  style={{color:'red'}}>*</span></option>
-            <option value="calculated">Calculated Credit Hours</option>
-            <option value="manual">Manual Override</option>
-          </select>
+  className="form-input form-select"
+  name="creditType"
+  value={formData.creditType}
+  onChange={handleChange}
+  required
+>
+  <option value="" disabled>
+    Choose between calculated or manual credit hours *
+  </option>
+  <option value="calculated">Calculated Credit Hours</option>
+  <option value="manual">Manual Override</option>
+</select>
+
         </div>
         
         {formData.creditType === 'manual' && (
