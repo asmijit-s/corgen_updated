@@ -289,7 +289,7 @@ Only return the raw structured object.
 ########################################## STAGE SUGGESTIONS ########################################################
 class SuggestionOutput(BaseModel):
     suggestions: List[str]
-    message: str
+    # message: str
 
 from enum import Enum
 
@@ -360,11 +360,14 @@ User Suggestion:
 
 Instructions:
 - Carefully analyze the user's suggestion and apply the requested changes to the stage content.
-- Revise, add, or remove items as needed, but do not discard valuable content unless the suggestion requires it.
+- Revise, add, or remove items as needed, but do not discard valuable content unless the suggestion explicitly mentions it.
+- Ensure that the updated content remains coherent and relevant to the course development process.
+- Maintain the structure and schema of the existing content.
+- Do not discard any existing content unless explicitly requested by the user.
+- If the user suggests adding new items, ensure they fit logically within the existing structure.
 - If the stage contains items with IDs (e.g., module_id, submodule_id), ensure modifications are applied to the correct items.
 - Maintain the expected structure and schema for this stage.
 - Do not include extra explanations, notes, or suggestions in your output.
-- Only output the updated content in the required JSON format for this stage.
 
 Output Requirements:
 - Output must strictly match the JSON schema for the '{stage}' stage.
