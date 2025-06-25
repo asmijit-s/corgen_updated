@@ -52,6 +52,7 @@ const ModulesListPage = () => {
       updatedModules[index] = {
         ...updatedModules[index],
         submodules: generatedSubmodules,
+        suggestions_submodules: data.suggestions
       };
 
       setModules(updatedModules);

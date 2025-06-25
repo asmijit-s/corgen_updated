@@ -41,42 +41,47 @@ const CourseOutline = () => {
     localStorage.setItem("generatedCourse", JSON.stringify(courseData));
   };
 
-  const handleFinalSave = async () => {
+ const handleFinalSave = async () => {
   if (!courseData) return;
   setIsSaving(true);
 
   try {
-    // Call your backend to generate modules dynamically
-    const response = await fetch("http://127.0.0.1:8000/course/generate/modules", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      // 👇 Send the course outline exactly as your backend expects
-      body: JSON.stringify({
-        course_id: courseData.outline.course_id,
-        title: courseData.outline.title,
-        prerequisites: courseData.outline.prerequisites,
-        description: courseData.outline.description,
-        learning_outcomes: courseData.outline.learning_outcomes,
-        duration: courseData.outline.duration,
-        credits: courseData.outline.credits
-      }),
-    });
+    let updatedCourse = { ...courseData };
 
-    if (!response.ok) {
-      throw new Error(`Failed to generate modules: ${response.status}`);
+    // 👉 Check if modules are already generated
+    if (!courseData.modules || courseData.modules.length === 0) {
+      // 🔥 Call your backend to generate modules dynamically
+      const response = await fetch("http://127.0.0.1:8000/course/generate/modules", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          course_id: courseData.outline.course_id,
+          title: courseData.outline.title,
+          prerequisites: courseData.outline.prerequisites,
+          description: courseData.outline.description,
+          learning_outcomes: courseData.outline.learning_outcomes,
+          duration: courseData.outline.duration,
+          credits: courseData.outline.credits
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate modules: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Modules API response:", data);
+
+      updatedCourse = {
+        ...courseData,
+        modules: data.result.modules,
+        suggestions_modules: data.suggestions
+      };
     }
 
-    const data = await response.json();
-    console.log("Modules API response:", data);
-
-    // ✅ Combine outline + modules and save to localStorage
-    const updatedCourse = {
-      ...courseData,
-      modules: data.result.modules  // <--- use backend result!
-    };
-
+    // ✅ Save updated course to localStorage
     localStorage.setItem("generatedCourse", JSON.stringify(updatedCourse));
 
     navigate("/modules");
@@ -87,6 +92,7 @@ const CourseOutline = () => {
     setIsSaving(false);
   }
 };
+
 
   const handleDownloadPDF = () => {
     if (!courseData) return;
