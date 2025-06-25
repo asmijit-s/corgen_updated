@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Type
 import json
+from pydantic import BaseModel, field_validator, model_validator
 
 load_dotenv()
 
@@ -24,12 +25,14 @@ def call_llm(prompt: Content, system_prompt: str, response_schema: Type[BaseMode
                 temperature=0.1
             )
         )
-        if debug:
-            print("LLM Raw Response: ", response.text)
+        if debug or True:  # force debug always for now
+            print(f"\n=== LLM RAW RESPONSE ===\n{response.text}\n=== END ===\n")
+
         parsed_response = None
         if response.text is not None:
             parsed_response = json.loads(response.text)
         return parsed_response
+
     except Exception as e:
         print(f"LLM call failed: {e}")
         return None
@@ -56,7 +59,41 @@ class CourseOutline(BaseModel):
     duration: str
     credits: int
 
+<<<<<<< HEAD
 SchemaDict["outline"]=CourseOutline
+=======
+class CourseInit(BaseModel):
+    course_id: str
+    title: str
+    prerequisites: List[str]
+    description: str
+    learning_objectives: List[str]
+    target_audience: str
+    duration: str
+    credits: int
+
+    # ✅ Clean prerequisites (string → list)
+    @field_validator('prerequisites', mode='before')
+    @classmethod
+    def split_prerequisites(cls, v):
+        if isinstance(v, str):
+            return [p.strip() for p in v.split(',') if p.strip()]
+        return v
+
+    # ✅ Clean learning_objectives (string → list)
+    @field_validator('learning_objectives', mode='before')
+    @classmethod
+    def split_learning_objectives(cls, v):
+        if isinstance(v, str):
+            return [o.strip() for o in v.split('.') if o.strip()]
+        return v
+
+    # ✅ Force credits to int
+    @field_validator('credits', mode='before')
+    @classmethod
+    def ensure_int(cls, v):
+        return int(float(v))
+>>>>>>> d81cd1ca7fc06401364933fdff4a6596c5806ac3
 
 def generate_course_outline(course: CourseInit) -> Optional[dict]:
     #- Learning Objectives: {', '.join(course.learning_objectives)} removed this for now 
@@ -232,18 +269,27 @@ class Activity(BaseModel):
 class ActivitySet(BaseModel):
     activities: List[Activity]
 
+<<<<<<< HEAD
 SchemaDict["activity"] = ActivitySet
 
 def generate_activities(submodule: Submodule, activity_types: str, user_instructions: Optional[str] = None) -> Optional[dict]:
+=======
+def generate_activities(submodule_id: str, submodule_description: str, activity_types: List[str], user_instructions: Optional[str] = None) -> Optional[dict]:
+>>>>>>> d81cd1ca7fc06401364933fdff4a6596c5806ac3
     system_prompt = f"""
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses.
 
 Your task is to generate a list of learning activities for a course submodule. The user will provide the submodule name, description, and optionally a set of instructions and preferred activity types (like Lecture, Quiz, Assessment, etc.).
 
 ### Input:
+<<<<<<< HEAD
 - Submodule ID: {submodule.submodule_id}
 - Submodule Name: {submodule.submodule_title}
 - Submodule Description: {submodule.submodule_description}
+=======
+- Submodule ID: {submodule_id}
+- Submodule Description: {submodule_description}
+>>>>>>> d81cd1ca7fc06401364933fdff4a6596c5806ac3
 - Preferred Activity Types: {activity_types}
 - User Instructions (optional): {user_instructions or "None provided"}
 
@@ -268,7 +314,6 @@ Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
 Only return the raw structured object.
 
 """
-
     user_content = Content(
         role="user",
         parts=[
