@@ -32,13 +32,7 @@ logging.basicConfig(level=logging.INFO)
 course_state = {}
 
 class ActivityRequest(BaseModel):
-<<<<<<< HEAD
     activity_types: str
-=======
-    submodule_id: str
-    submodule_description: str
-    activity_types: List[str]
->>>>>>> d81cd1ca7fc06401364933fdff4a6596c5806ac3
     user_instructions: Optional[str] = None
 
 class RedoRequest(BaseModel):
@@ -106,7 +100,6 @@ def generate_submodule(module: Module):
     return {"result": result, "suggestions": suggestions}
 
 @router.post("/generate/activities")
-<<<<<<< HEAD
 def generate_activity(submodule: Submodule, payload: ActivityRequest):
     logger.info("Generating activities...")
     result_str = generate_activities(
@@ -119,24 +112,6 @@ def generate_activity(submodule: Submodule, payload: ActivityRequest):
     result = parse_result(result_str, ActivitySet)
     course_state[submodule.submodule_id] = course_state.get(submodule.submodule_id, {})
     course_state[submodule.submodule_id]["activities"] = result
-=======
-def generate_activity(payload: ActivityRequest):
-    print("maa chud gyi")
-    logger.info("Generating activities...")
-    result = generate_activities(
-        payload.submodule_id,
-        payload.submodule_description,
-        payload.activity_types,
-        payload.user_instructions
-    )
-
-    if not result:
-        raise HTTPException(status_code=400, detail="Failed to generate activities")
-
-    course_state[payload.submodule_id] = course_state.get(payload.submodule_id, {})
-    course_state[payload.submodule_id]["activities"] = result
-
->>>>>>> d81cd1ca7fc06401364933fdff4a6596c5806ac3
     suggestions = get_stage_suggestions(Stage.activity, as_json(result))
     return {"result": result, "suggestions": suggestions}
 
