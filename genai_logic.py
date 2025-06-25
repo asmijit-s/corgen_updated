@@ -34,7 +34,8 @@ def call_llm(prompt: Content, system_prompt: str, response_schema: Type[BaseMode
         print(f"LLM call failed: {e}")
         return None
 
-
+################################# Schema Dict ######################################################
+SchemaDict = {}
 ################################# OUTLINE GENERATION ######################################################
 class CourseInit(BaseModel):
     course_id: str
@@ -55,6 +56,7 @@ class CourseOutline(BaseModel):
     duration: str
     credits: int
 
+SchemaDict["outline"]=CourseOutline
 
 def generate_course_outline(course: CourseInit) -> Optional[dict]:
     #- Learning Objectives: {', '.join(course.learning_objectives)} removed this for now 
@@ -110,63 +112,6 @@ Only return the raw structured object.
     return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
 
-
-def redo_course_outline(course: CourseInit, prev_outline: CourseOutline, user_suggestion: str) -> Optional[dict]:
-    """
-    Regenerate the course outline based on user feedback/suggestions.
-    """
-    system_prompt = f"""
-You are a course design assistant. You are given a previously generated course outline.
-Now, the user has provided a suggestion to modify or improve this outline.
-
-Use this suggestion to regenerate the course outline appropriately. You may revise the learning outcomes,
-enhance the description, clarify prerequisites, or make any other changes as needed — but ensure the overall
-structure remains aligned with the original course metadata.
-
-### Course Metadata:
-- Title: {course.title}
-- Prerequisites: {course.prerequisites}
-- Description: {course.description}
-- Learning Objectives: {', '.join(course.learning_objectives)}
-- Target Audience: {course.target_audience}
-- Duration: {course.duration}
-- Credits: {course.credits}
-
-### Previous Outline:
-{prev_outline.model_dump_json(indent=2)}
-
-### Instructions:
-- Do NOT discard useful content from the previous outline unless the suggestion implies it.
-- Refine and regenerate the outline with improvements.
-- Maintain the expected format and ensure clarity and student focus.
-
-### Output Format:
-Strictly return the revised outline as a JSON object matching this schema:
-- course_id
-- title
-- prerequisites
-- description
-- learning_outcomes
-- duration
-- credits
-
-Output must strictly match the JSON schema provided. 
-Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
-Only return the raw structured object.
-
-"""
-
-    # Construct the user message (the suggestion)
-    user_content = Content(role="user", parts=[Part(text=user_suggestion)])
-
-    # Call the Gemini model
-    response = call_llm(
-        prompt=user_content,
-        system_prompt=system_prompt,
-        response_schema=CourseOutline
-    )
-    return response if response is not None else {"error": "Nothing was generated. Please try again."}
-
 ############################### MODULE  GENERATION ######################################################
 class Module(BaseModel):
     module_id: str
@@ -177,6 +122,8 @@ class Module(BaseModel):
 class ModuleSet(BaseModel):
     course_id: str
     modules: List[Module]
+
+SchemaDict["module"] = ModuleSet
 
 def generate_modules(course_outline: CourseOutline) -> Optional[dict]:
     system_prompt = """
@@ -219,48 +166,6 @@ Only return the raw structured object.
 
     return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
-
-def redo_modules(course_outline: CourseOutline, prev_modules: ModuleSet, user_suggestion: str) -> Optional[dict]:
-    system_prompt = """
-You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses. You are given a previously generated set of course modules and a course outline.
-Now, the user has provided a suggestion to modify or improve these modules.
-
-Use this suggestion to regenerate the modules appropriately. You may revise module titles, descriptions, durations, or suggestions as needed — but ensure the overall structure remains aligned with the original course outline.
-
-### Instructions:
-- Do NOT discard useful content from the previous modules unless the suggestion implies it.
-- Refine and regenerate the modules with improvements.
-- Maintain the expected format and ensure logical progression and student engagement.
-- Adjust module count only if the suggestion or outline clarity calls for it.
-
-### Output Format:
-Strictly return the revised modules as a JSON object with:
-- course_id
-- modules: list of module objects (module_title, description, module_hours, suggestions)
-
-Output must strictly match the JSON schema provided. 
-Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
-Only return the raw structured object.
-
-"""
-
-    user_content = Content(
-        role="user",
-        parts=[
-            Part(text="Suggestion: " + user_suggestion),
-            Part(text="Course Outline:\n" + json.dumps(course_outline.model_dump(), indent=2)),
-            Part(text="Previous Modules:\n" + json.dumps(prev_modules.model_dump(), indent=2))
-        ]
-    )
-
-    response = call_llm(
-        prompt=user_content,
-        system_prompt=system_prompt,
-        response_schema=ModuleSet
-    )
-
-    return response if response is not None else {"error": "Nothing was generated. Please try again."}
-
 ################################# SUBMODULE GENERATION ######################################################
 class Submodule(BaseModel):
     submodule_id: str
@@ -270,6 +175,8 @@ class Submodule(BaseModel):
 class SubmoduleSet(BaseModel):
     module_id: str
     submodules: List[Submodule]
+
+SchemaDict["submodule"] = SubmoduleSet
 
 def generate_submodules(module: Module) -> Optional[dict]:
     system_prompt = """
@@ -315,44 +222,6 @@ Only return the raw structured object.
 
     return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
-def redo_submodules(module: Module, prev_submodules: SubmoduleSet, user_suggestion: str) -> Optional[dict]:
-    system_prompt = """
-You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses. You are given a previously generated set of submodules for a course module.
-Now, the user has provided a suggestion to modify or improve these submodules.
-
-### Instructions:
-- Do NOT discard useful content from the previous submodules unless the suggestion implies it.
-- Refine and regenerate the submodules with improvements.
-- Maintain the expected format and ensure logical progression and student engagement.
-- Adjust submodule count only if the suggestion or outline clarity calls for it.
-
-### Output Format:
-Strictly return the revised submodules as a JSON object with:
-- module_id
-- submodules: list of submodule objects (submodule_title, submodule_description)
-
-Output must strictly match the JSON schema provided. 
-Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
-Only return the raw structured object.
-
-"""
-
-    user_content = Content(
-        role="user",
-        parts=[
-            Part(text="Suggestion: " + user_suggestion),
-            Part(text="Module info:\n" + json.dumps(module.model_dump(), indent=2)),
-            Part(text="Previous Submodules:\n" + json.dumps(prev_submodules.model_dump(), indent=2))
-        ]
-    )
-
-    response = call_llm(
-        prompt=user_content,
-        system_prompt=system_prompt,
-        response_schema=SubmoduleSet
-    )
-
-    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 ################################# ACTIVITY GENERATION ######################################################
 class Activity(BaseModel):
     activity_name: str
@@ -363,15 +232,18 @@ class Activity(BaseModel):
 class ActivitySet(BaseModel):
     activities: List[Activity]
 
-def generate_activities(submodule_name: str, submodule_description: str, activity_types: str, user_instructions: Optional[str] = None) -> Optional[dict]:
+SchemaDict["activity"] = ActivitySet
+
+def generate_activities(submodule: Submodule, activity_types: str, user_instructions: Optional[str] = None) -> Optional[dict]:
     system_prompt = f"""
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses.
 
 Your task is to generate a list of learning activities for a course submodule. The user will provide the submodule name, description, and optionally a set of instructions and preferred activity types (like Lecture, Quiz, Assessment, etc.).
 
 ### Input:
-- Submodule Name: {submodule_name}
-- Submodule Description: {submodule_description}
+- Submodule ID: {submodule.submodule_id}
+- Submodule Name: {submodule.submodule_title}
+- Submodule Description: {submodule.submodule_description}
 - Preferred Activity Types: {activity_types}
 - User Instructions (optional): {user_instructions or "None provided"}
 
@@ -401,67 +273,6 @@ Only return the raw structured object.
         role="user",
         parts=[
             Part(text="Generate activities based on the provided inputs.")
-        ]
-    )
-
-    response = call_llm(
-        prompt=user_content,
-        system_prompt=system_prompt,
-        response_schema=ActivitySet
-    )
-
-    return response if response is not None else {"error": "Nothing was generated. Please try again."}
-
-def redo_activities(
-    existing_activities: List[Dict],
-    submodule_name: str,
-    submodule_description: str,
-    user_suggestion: str
-) -> Optional[dict]:
-    system_prompt = f"""
-You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses.
-
-You are given a list of learning activities for a course submodule. The user has now requested changes or improvements.
-
-### Submodule:
-- Name: {submodule_name}
-- Description: {submodule_description}
-
-### Existing Activities:
-{json.dumps(existing_activities, indent=2)}
-
-### User Suggestion:
-"{user_suggestion}"
-
-### Instructions:
-- Based on the user's suggestion, modify or regenerate activities.
-- You may remove, rewrite, or add activities as needed.
-- Keep the output structured and clear.
-- Adjust the number of activities if the user has asked for it.
-- Do not repeat activities unless explicitly requested.
-- Only output the new or modified list of activities in the format below.
-
-### Output JSON Format:
-Return a JSON array of activity objects with the following fields:
-- "activity_name"
-- "activity_description"
-- "activity_objective"
-- "activity_type"
-
-Return only the updated JSON array. No extra explanation.
-
-Output must strictly match the JSON schema provided. 
-Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
-Only return the raw structured object.
-
-"""
-
-    user_content = Content(
-        role="user",
-        parts=[
-            Part(text="Modify the following activities:"),
-            Part(text=json.dumps(existing_activities, indent=2)),
-            Part(text="Suggestion: " + user_suggestion)
         ]
     )
 
@@ -526,7 +337,51 @@ Read the stage instructions carefully.
     except Exception as e:
         return {"error": str(e)}
 
+############################ Redo Unified ########################################################
 
+def redo_stage(stage: Stage, prev_content: dict, user_message: str) -> Optional[dict]:
 
+    if stage not in SchemaDict:
+        return {"error": f"No schema found for stage '{stage}'."}
 
+    prompt = f"""
+You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses. You are provided with the previously generated content for a specific course development stage (**{stage}**).
 
+The user has now submitted a suggestion to improve or modify this stage. Your task is to carefully update the content according to the user's feedback, while preserving useful and relevant information from the existing content.
+
+Stage: {stage}
+Existing Content:
+{prev_content}
+
+User Suggestion:
+{user_message}
+
+Instructions:
+- Carefully analyze the user's suggestion and apply the requested changes to the stage content.
+- Revise, add, or remove items as needed, but do not discard valuable content unless the suggestion requires it.
+- If the stage contains items with IDs (e.g., module_id, submodule_id), ensure modifications are applied to the correct items.
+- Maintain the expected structure and schema for this stage.
+- Do not include extra explanations, notes, or suggestions in your output.
+- Only output the updated content in the required JSON format for this stage.
+
+Output Requirements:
+- Output must strictly match the JSON schema for the '{stage}' stage.
+- Do NOT include additional fields or explanations.
+- Only return the raw structured object.
+"""
+    user_content = Content(
+        role="user",
+        parts=[
+            Part(text="Redo the content based on the user's suggestion."),
+            Part(text=json.dumps(prev_content, indent=2)),
+            Part(text="User Message: " + user_message)
+        ]
+    )
+
+    response = call_llm(
+        prompt=user_content,
+        system_prompt=prompt,
+        response_schema=SchemaDict[stage]
+    )
+
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
