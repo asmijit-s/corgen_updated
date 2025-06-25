@@ -8,7 +8,7 @@ const ModificationSelector = ({
   submitButtonText = "Re-build",
   cancelButtonText = "Cancel",
   options = [],
-  onSubmit,
+  stage,
   onCancel,
   isLoading = false
 }) => {
@@ -28,20 +28,18 @@ const ModificationSelector = ({
 
     const selected = options.find(opt => opt.value === selectedOption);
     const fullValue = selected?.fullValue;
-    console.log(`Processing your request with the following:
-\nSelected Key: ${selected.label}
-\nFull Value: ${typeof fullValue === 'object' ? JSON.stringify(fullValue, null, 2) : fullValue}
-\nYour Prompt: ${modificationText}`);
-    alert(
-      `Processing your request with the following:
-\nSelected Key: ${selected.label}
-\nFull Value: ${typeof fullValue === 'object' ? JSON.stringify(fullValue, null, 2) : fullValue}
-\nYour Prompt: ${modificationText}`
-    );
+
+      console.log("Submitted Info:");
+      console.log("Stage Full Value:", stage);
+      console.log("Selected Dropdown Label:", selected.label);
+      console.log("Selected Dropdown Value:", selected.value);
+      console.log("Full Value:", fullValue);
+      console.log("Modification Prompt:", modificationText);
+
 
     setError('');
     try {
-      await onSubmit(selectedOption, modificationText);
+      //api ()stage, selected.value, fullvalue, modificationtext
       setSelectedOption('');
       setModificationText('');
     } catch (err) {
@@ -61,7 +59,7 @@ const ModificationSelector = ({
         >
           <option value="">Select an option...</option>
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option key={option.value} value={option.value} fullValue={option.fullValue}>
               {option.label}
             </option>
           ))}
@@ -85,7 +83,7 @@ const ModificationSelector = ({
         <button 
           className="build-btn" 
           onClick={handleSubmit}
-          disabled={isLoading}
+          disabled={isLoading || options.length === 0 || !selectedOption || !modificationText.trim()}
         >
           {isLoading ? (
             <>

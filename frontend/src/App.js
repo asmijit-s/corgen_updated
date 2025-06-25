@@ -31,12 +31,18 @@ function generateOptionsFromLocalStorage(context = 'outline') {
   }
 
   if (context === 'modules' && data.modules) {
-    const options = Object.entries(data.modules).map(([key, value]) => ({
-      label: value.module_title,
-      value: key,
-      fullValue: value
-    }));
-    return [{ label: "All", value: "all", fullValue: data.modules }, ...options];
+    const modulesWithoutSubmodules = Object.fromEntries(
+    Object.entries(data.modules).map(([key, module]) => {
+      const { submodules, ...rest } = module; // exclude submodules
+      return [key, rest];
+    })
+  );
+  const options = Object.entries(modulesWithoutSubmodules).map(([key, value]) => ({
+    label: value.module_title,
+    value: value.module_id,
+    fullValue: modulesWithoutSubmodules
+  }));
+    return [{ label: "All", value: "all", fullValue: modulesWithoutSubmodules }, ...options];
   }
   if (context === 'submodules') {
     const path = window.location.pathname;
@@ -49,12 +55,18 @@ function generateOptionsFromLocalStorage(context = 'outline') {
       data.modules[moduleIndex]?.submodules
     ) {
       const submods = data.modules[moduleIndex].submodules;
-      const options = submods.map((sub, idx) => ({
-        label: sub.submodule_title,
-        value: `${moduleIndex}_${idx}`,
-        fullValue: sub
-      }));
-      return [{ label: "All", value: "all", fullValue: submods }, ...options];
+      // Remove `activities` from each submodule
+    const submodsWithoutActivities = data.modules[moduleIndex].submodules.map(sub => {
+      const { activities, ...rest } = sub;
+      return rest;
+    });
+
+    const options = submodsWithoutActivities.map((sub, idx) => ({
+      label: sub.submodule_title,
+      value: sub.submodule_id,
+      fullValue: submodsWithoutActivities
+    }));
+      return [{ label: "All", value: "all", fullValue: submodsWithoutActivities }, ...options];
     }
   }
   if (context === 'activities') {
@@ -73,8 +85,8 @@ function generateOptionsFromLocalStorage(context = 'outline') {
       const activities = data.modules[moduleIndex].submodules[submoduleIndex].activities;
       const options = activities.map((activity, idx) => ({
         label: activity.activity_name || `Activity ${idx + 1}`,
-        value: `${moduleIndex}_${submoduleIndex}_${idx}`,
-        fullValue: activity
+        value: activity.activity_name || `Activity ${idx + 1}`,
+        fullValue: activities
       }));
       return [{ label: "All", value: "all", fullValue: activities }, ...options];
     }
@@ -88,7 +100,7 @@ function AppContent() {
   const [leftPanelWidth, setLeftPanelWidth] = useState(300);
   const isResizing = useRef(false);
   const [isCollapsed, setIsCollapsed] = useState(false); // NEW
-
+  const [stage ,setstage] = useState([]);
   const toggleCollapse = () => setIsCollapsed(prev => !prev);
   
   const handleMouseDown = () => { isResizing.current = true; };
@@ -110,26 +122,21 @@ function AppContent() {
   useEffect(() => {
     if (location.pathname.includes("/outline")) {
       setOptions(generateOptionsFromLocalStorage("outline"));
+      setstage("outline");
     } else if (location.pathname.includes("/modules")) {
       setOptions(generateOptionsFromLocalStorage("modules"));
+      setstage("module");
     } else if(location.pathname.includes("/submodules/")){
       setOptions(generateOptionsFromLocalStorage("submodules"));
+      setstage("submodule");
     }else if (location.pathname.includes("/activities/")) {
       setOptions(generateOptionsFromLocalStorage("activities"));
+      setstage("activity");
     } else {
       setOptions([]);
     }
   }, [location.pathname]);
 
-  const handleModificationSubmit = (selectedKey, prompt) => {
-    const selectedOption = options.find(opt => opt.value === selectedKey);
-    const value = selectedOption?.fullValue || "";
-
-    console.log("Selected key:", selectedKey);
-    console.log("Associated value:", value);
-    console.log("Prompt:", prompt);
-    // Future: Call API with key, value, and prompt
-  };
 
   return (
     <div className="app-container">
@@ -161,8 +168,8 @@ function AppContent() {
           {/* Conditionally show ModificationSelector */}
           {!isCollapsed && (
             <ModificationSelector 
-              options={options.map(({ label, value }) => ({ label, value }))} 
-              onSubmit={handleModificationSubmit} 
+              options={options.map(({ label, value, fullValue }) => ({ label, value, fullValue }))}  
+              stage={stage}
             />
           )}
         </div>
