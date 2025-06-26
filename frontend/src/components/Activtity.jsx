@@ -49,6 +49,7 @@ const ActivitiesPage = () => {
       if (module && module.submodules && module.submodules[submoduleId]) {
         const submodule = module.submodules[submoduleId];
         const submoduleDescription = submodule.submodule_description;
+        const submodule_name = submodule.submodule_title;
         const submodule_id = submodule.submodule_id;
 
         const response = await fetch("http://localhost:8000/course/generate/activities", {
@@ -56,6 +57,7 @@ const ActivitiesPage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             submodule_id: submodule_id,
+            submodule_name: submodule_name,
             submodule_description: submoduleDescription,
             activity_types: selectedTypes,
             user_instructions: guidelines
