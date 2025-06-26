@@ -48,7 +48,7 @@ class CourseInit(BaseModel):
     learning_objectives: List[str]
     target_audience: str
     duration: str
-    credits: int
+    credits: float
 
 class CourseOutline(BaseModel):
     course_id: str
@@ -57,7 +57,7 @@ class CourseOutline(BaseModel):
     description: str
     learning_outcomes: List[str]
     duration: str
-    credits: int
+    credits: float
 
 SchemaDict["outline"]=CourseOutline
 
