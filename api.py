@@ -32,7 +32,10 @@ logging.basicConfig(level=logging.INFO)
 course_state = {}
 
 class ActivityRequest(BaseModel):
-    activity_types: str
+    submodule_id :str
+    submodule_name :str
+    submodule_description: str
+    activity_types: List[str]
     user_instructions: Optional[str] = None
 
 class RedoRequest(BaseModel):
@@ -100,18 +103,23 @@ def generate_submodule(module: Module):
     return {"result": result, "suggestions": suggestions}
 
 @router.post("/generate/activities")
-def generate_activity(submodule: Submodule, payload: ActivityRequest):
+def generate_activity(payload: ActivityRequest):
     logger.info("Generating activities...")
+    submodule = Submodule(
+        submodule_id=payload.submodule_id,
+        submodule_title=payload.submodule_name,
+        submodule_description=payload.submodule_description
+    )
     result_str = generate_activities(
-        submodule,
-        payload.activity_types,
-        payload.user_instructions
+        submodule=submodule,
+        activity_types=payload.activity_types,
+        user_instructions=payload.user_instructions
     )
     if isinstance(result_str, dict):
         result_str = json.dumps(result_str)
     result = parse_result(result_str, ActivitySet)
-    course_state[submodule.submodule_id] = course_state.get(submodule.submodule_id, {})
-    course_state[submodule.submodule_id]["activities"] = result
+    course_state[payload.submodule_id] = course_state.get(payload.submodule_id, {})
+    course_state[payload.submodule_id]["activities"] = result
     suggestions = get_stage_suggestions(Stage.activity, as_json(result))
     return {"result": result, "suggestions": suggestions}
 
