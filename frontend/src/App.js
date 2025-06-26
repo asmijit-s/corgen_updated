@@ -186,8 +186,9 @@ function AppContent() {
             <Route path="/activities" element={<ModulesDropdownPage />} />
             <Route path="/activities/:moduleId/:submoduleId" element={<ActivitiesPage />} />
             <Route path="/blueprint" element={<BlueprintPage />} />
-            <Route path="/generate" element={<GenerationPage />} />
             <Route path="/:nothing" element={<NotFoundPage />} />
+            <Route path="/generate" element={<GenerationPage />} />
+
           </Routes>
           <SuggestionWidget/>
         </div>

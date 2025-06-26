@@ -40,6 +40,8 @@ def call_llm(prompt: Content, system_prompt: str, response_schema: Type[BaseMode
 ################################# Schema Dict ######################################################
 SchemaDict = {}
 ################################# OUTLINE GENERATION ######################################################
+
+
 class CourseInit(BaseModel):
     course_id: str
     title: str
@@ -49,7 +51,7 @@ class CourseInit(BaseModel):
     target_audience: str
     duration: str
     credits: float
-
+    
 class CourseOutline(BaseModel):
     course_id: str
     title: str

@@ -210,7 +210,6 @@ const GenerationPage = () => {
             </div>
           ))}
         </div>
-
         <div className="save-continue-container">
           <button className="download-pdf-btn" onClick={downloadPDF}>
             Download as PDF
