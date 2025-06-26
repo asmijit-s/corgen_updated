@@ -12,6 +12,7 @@ import SubmodulesPage from "./components/SubModule.jsx";
 import ActivitiesPage from "./components/Activtity.jsx";
 import ModulesDropdownPage from "./components/ModuleDropdown.jsx";
 import BlueprintPage from "./components/Blueprint.jsx";
+import GenerationPage from './components/Generation';  // No `.jsx` in import
 import { FiChevronUp, FiChevronDown } from 'react-icons/fi'; // add this at the top
 import NotFoundPage from "./components/NotFound.jsx";
 import SuggestionWidget from "./components/SuggestionBox.jsx";
@@ -186,6 +187,8 @@ function AppContent() {
             <Route path="/activities/:moduleId/:submoduleId" element={<ActivitiesPage />} />
             <Route path="/blueprint" element={<BlueprintPage />} />
             <Route path="/:nothing" element={<NotFoundPage />} />
+            <Route path="/generate" element={<GenerationPage />} />
+
           </Routes>
           <SuggestionWidget/>
         </div>
