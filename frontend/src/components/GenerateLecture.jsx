@@ -81,54 +81,65 @@ const LecturePage = () => {
     });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    try {
-      if (!courseData) throw new Error('Course data not loaded');
-      const updatedCourse = JSON.parse(JSON.stringify(courseData));
-      const module = updatedCourse.modules?.[moduleId];
-      const submodule = module?.submodules?.[submoduleId];
-      const activity = submodule?.activities?.[activity_idx];
-      if (!module || !submodule || !activity) throw new Error('Invalid path');
-      if (!activity.content) activity.content = {};
+  try {
+    if (!courseData) throw new Error('Course data not loaded');
 
-      const initialContent = `# Lecture Script
+    const updatedCourse = JSON.parse(JSON.stringify(courseData));
+    const module = updatedCourse.modules?.[moduleId];
+    const submodule = module?.submodules?.[submoduleId];
+    const activity = submodule?.activities?.[activity_idx];
 
-${formData.userGuideline ? `## User Guidelines\n${formData.userGuideline.trim()}\n` : ''}
+    if (!module || !submodule || !activity) throw new Error('Invalid path');
+    if (!activity.content) activity.content = {};
 
-${formData.urls
-  ? `## Resources\n${formData.urls
-      .split(',')
-      .filter(url => url.trim())
-      .map(url => `- [${url.trim()}](${url.trim()})`)
-      .join('\n')}`
-  : ''}
+    // ✅ Prepare payload for API
+    const requestBody = {
+      course_outline: courseData.courseOutline || {}, // adjust if needed
+      module_name: module.module_title || module.moduleName,
+      submodule_name: submodule.submodule_title || submodule.submoduleName,
+      user_prompt: formData.userGuideline || '',
+      prev_activities_summary: '', // can be added later
+      notes_path: null,
+      pdf_path: null,
+      text_examples: null,
+      duration_minutes: null
+    };
 
-${formData.pdfs.length
-  ? `## PDF Documents\n${formData.pdfs
-      .map(pdf => `- [${pdf.name}](${URL.createObjectURL(pdf)})`)
-      .join('\n')}`
-  : ''}
-
-${formData.documents.length
-  ? `## Text Documents\n${formData.documents
-      .map(doc => `- [${doc.name}](${URL.createObjectURL(doc)})`)
-      .join('\n')}`
-  : ''}
-`;
-const initialContentSummary = `# Summary`;
-
-      activity.content.lectureScript = initialContent;
-      activity.content.summary = initialContentSummary;
-      localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
-      setCourseData(updatedCourse);
-      setShowForm(false);
-    } catch (error) {
-      console.error('Error saving content:', error);
-      alert('Failed to save. Please try again.');
+    const firstUrl = formData.urls?.split(',')?.[0]?.trim();
+    if (firstUrl) {
+      requestBody.url = firstUrl;
     }
-  };
+
+    const response = await fetch('http://localhost:8000/course/generate-lecture-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || 'Failed to generate lecture script');
+    }
+
+    const data = await response.json();
+
+    // ✅ Save generated content
+    activity.content.lectureScript = data.lectureScript;
+    activity.content.summary = `# Summary\n\n(Add summary here or generate one using Gemini)`;
+
+    localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
+    setCourseData(updatedCourse);
+    setShowForm(false);
+
+  } catch (error) {
+    console.error('Error saving content:', error);
+    alert(error.message || 'Failed to save. Please try again.');
+  }
+};
+
 
   if (loading) {
     return <div className="loading-container">Loading...</div>;
