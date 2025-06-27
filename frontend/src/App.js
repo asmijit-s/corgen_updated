@@ -16,6 +16,9 @@ import GenerationPage from './components/Generation';  // No `.jsx` in import
 import { FiChevronUp, FiChevronDown } from 'react-icons/fi'; // add this at the top
 import NotFoundPage from "./components/NotFound.jsx";
 import SuggestionWidget from "./components/SuggestionBox.jsx";
+import ReadingPage from "./components/Generate_reading.jsx";
+import LecturePage from "./components/GenerateLecture.jsx";
+import DocumentViewer from "./components/UploadDocument.jsx";
 import "./App.css";
 
 function generateOptionsFromLocalStorage(context = 'outline') {
@@ -188,7 +191,9 @@ function AppContent() {
             <Route path="/blueprint" element={<BlueprintPage />} />
             <Route path="/:nothing" element={<NotFoundPage />} />
             <Route path="/generate" element={<GenerationPage />} />
-
+            <Route path="/generate_reading/:moduleId/:submoduleId/:activity_idx" element={<ReadingPage />} />
+            <Route path="/generate_lecture/:moduleId/:submoduleId/:activity_idx" element={<LecturePage />} />
+            {/* <Route path="/view_document/:moduleIdx/:submoduleIdx/:activityIdx" element={<DocumentViewer />} /> */}
           </Routes>
           <SuggestionWidget/>
         </div>

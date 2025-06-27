@@ -51,7 +51,7 @@ if (currentPath === '/') {
   currentStep = 5;
 } else if (currentPath === '/blueprint') {
   currentStep = 6;
-} else if (currentPath === '/content') {
+} else if (currentPath === '/generate'||currentPath.startsWith('/generate_lecture') ||currentPath.startsWith('/generate_reading')  ||currentPath.startsWith('/generate_quiz')  ||currentPath.startsWith('/upload_document') ) {
   currentStep = 7;
 }
 
