@@ -13,6 +13,7 @@ const activity_types = [
 
 const ActivitiesPage = () => {
   const { moduleId, submoduleId } = useParams();
+  console.log(useParams());
   const navigate = useNavigate();
   const [activities, setActivities] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
