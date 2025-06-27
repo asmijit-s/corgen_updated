@@ -131,7 +131,7 @@ const ReadingPage = () => {
 //       alert('Failed to save reading material. Please try again.');
 //     }
 //   };
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
@@ -151,43 +151,36 @@ const ReadingPage = () => {
         console.log(activity);
       if (!activity.content) activity.content = {};
 
-      const initialContent = `
-# Reading Material
+      const requestBody = {
+      course_outline: courseData.courseOutline || {}, // Adjust if your outline is stored elsewhere
+      module_name: module.module_title || module.moduleName,
+      submodule_name: submodule.submodule_title || submodule.submoduleName,
+      user_prompt: formData.userGuideline || '',
+      previous_material_summary: '', // could be filled if editing
+      url: formData.urls?.split(',')[0]?.trim() || null,
+      pdf_path: null,           // Skipping file handling unless backend supports uploads
+      notes_path: null
+    };
 
-${formData.userGuideline
-  ? `## User Guidelines\n${formData.userGuideline.trim()}\n`
-  : ''}
+    // 🔄 API call to generate reading material
+    const response = await fetch('http://localhost:8000/course/generate-reading-material', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
 
-${formData.urls
-  ? `## Resources\n${formData.urls
-      .split(',')
-      .filter(url => url.trim())
-      .map(url => `- [${url.trim()}](${url.trim()})`)
-      .join('\n')}`
-  : ''}
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || 'Failed to generate reading material');
+    }
 
- ${//formData.images.length? ''
-//   ? `## Images\n${formData.images
-//       .map(img => `![${img.name}](${URL.createObjectURL(img)})`)
-//       .join('\n')}`
-  //: ''
-  ''}
+    const data = await response.json();
+    const readingMaterial = data.readingMaterial;
 
-${formData.pdfs.length
-  ? `## PDF Documents\n${formData.pdfs
-      .map(pdf => `- [${pdf.name}](${URL.createObjectURL(pdf)})`)
-      .join('\n')}`
-  : ''}
-
-${formData.documents.length
-  ? `## Text Documents\n${formData.documents
-      .map(doc => `- [${doc.name}](${URL.createObjectURL(doc)})`)
-      .join('\n')}`
-  : ''}
-`;
-
-
-      activity.content.readingMaterial = initialContent;
+    // ✅ Save returned content into localStorage
+    activity.content.readingMaterial = readingMaterial;
 
       localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
       setCourseData(updatedCourse); // 👈 ensures latest data in state
