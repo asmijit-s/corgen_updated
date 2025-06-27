@@ -175,10 +175,10 @@ def api_generate_reading(input: ReadingInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/generate-lecture-script")
-def api_generate_lecture(input: LectureInput):
+@app.post("/generate-lecture-script")
+def api_lecture(input: LectureInput):
     try:
-        script = generate_lecture_script(
+        script, summaries, script_summary = generate_lecture_script(
             course_outline=input.course_outline,
             module_name=input.module_name,
             submodule_name=input.submodule_name,
@@ -189,9 +189,14 @@ def api_generate_lecture(input: LectureInput):
             text_examples=input.text_examples,
             duration_minutes=input.duration_minutes
         )
-        return {"lectureScript": script}
+        return {
+            "lectureScript": script,
+            "sourceSummaries": summaries,
+            "lectureScriptSummary": script_summary
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/generate-quiz", response_model=List[QuizOut])
 def api_generate_quiz(input: QuizInput):
