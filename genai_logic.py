@@ -7,12 +7,13 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional, Type
 import json
 from pydantic import BaseModel, field_validator, model_validator
+from helper import MAX_CHARS_PER_CONTEXT, clean_text, truncate_text
 
 load_dotenv()
 
 llmclient = genai.Client(api_key=os.getenv("GOOGLE_API_KEY")) 
 
-################## COMMON LLM CALL #######################################################
+################## GENERIC LLM FUNCTIONS #######################################################
 def call_llm(prompt: Content, system_prompt: str, response_schema: Type[BaseModel], debug: bool = False) -> Optional[dict]:
     try:
         response = llmclient.models.generate_content(
@@ -37,7 +38,8 @@ def call_llm(prompt: Content, system_prompt: str, response_schema: Type[BaseMode
         print(f"LLM call failed: {e}")
         return None
 
-################################# SCHEMS DICT ######################################################
+    
+################################# SCHEMAS DICT ######################################################
 SchemaDict = {}
 ################################# OUTLINE GENERATION ######################################################
 
@@ -287,7 +289,6 @@ Only return the raw structured object.
     )
 
     return response if response is not None else {"error": "Nothing was generated. Please try again."}
-
 ########################################## STAGE SUGGESTIONS ########################################################
 class SuggestionOutput(BaseModel):
     suggestions: List[str]
@@ -340,6 +341,7 @@ Read the stage instructions carefully.
         return json.loads(response.text) if response.text else {}
     except Exception as e:
         return {"error": str(e)}
+    
 
 ############################ REDO UNIFIED ########################################################
 

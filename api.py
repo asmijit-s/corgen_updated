@@ -18,6 +18,19 @@ from genai_logic import (
     redo_stage,
     Stage
 )
+from course_content_generator import (
+    generate_reading_material,
+    generate_lecture_script,
+    generate_quiz,
+    generate_assignment,
+    generate_mindmap,
+    ReadingInput,
+    LectureInput,
+    QuizInput,
+    AssignmentInput,
+    MindmapInput,
+    QuizOut
+)
 import json
 import logging
 from typing import Optional, Dict, Any
@@ -112,7 +125,7 @@ def generate_activity(payload: ActivityRequest):
     )
     result_str = generate_activities(
         submodule=submodule,
-        activity_types=payload.activity_types,
+        activity_types=",".join(payload.activity_types),
         user_instructions=payload.user_instructions
     )
     if isinstance(result_str, dict):
@@ -134,4 +147,89 @@ def redo_any_stage(request: RedoRequest):
     result_str = parse_result(result_str, CourseOutline if request.stage == Stage.outline else ModuleSet if request.stage == Stage.module else SubmoduleSet if request.stage == Stage.submodule else ActivitySet)
     suggestions = get_stage_suggestions(request.stage, as_json(result_str))
     return {"result": result_str, "suggestions": suggestions}
+
+# course_content_generator.py (complete with endpoints)
+
+# ... (imports, utilities, models, and content generators already defined above) ...
+
+# ----------------------------- API Endpoints -----------------------------
+
+@router.post("/generate-reading-material")
+def api_generate_reading(input: ReadingInput):
+    try:
+        output, summaries = generate_reading_material(
+            course_outline=input.course_outline,
+            module_name=input.module_name,
+            submodule_name=input.submodule_name,
+            user_prompt=input.user_prompt,
+            previous_material_summary=input.previous_material_summary,
+            notes_path=input.notes_path,
+            pdf_path=input.pdf_path,
+            url=input.url
+        )
+        return {
+            "readingMaterial": output["readingMaterial"],
+            "readingMaterialSummary": output["readingMaterialSummary"],
+            "sourceSummaries": summaries
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/generate-lecture-script")
+def api_generate_lecture(input: LectureInput):
+    try:
+        script = generate_lecture_script(
+            course_outline=input.course_outline,
+            module_name=input.module_name,
+            submodule_name=input.submodule_name,
+            user_prompt=input.user_prompt,
+            prev_activities_summary=input.prev_activities_summary,
+            notes_path=input.notes_path,
+            pdf_path=input.pdf_path,
+            text_examples=input.text_examples,
+            duration_minutes=input.duration_minutes
+        )
+        return {"lectureScript": script}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/generate-quiz", response_model=List[QuizOut])
+def api_generate_quiz(input: QuizInput):
+    try:
+        quiz = generate_quiz(
+            module_name=input.module_name,
+            submodule_name=input.submodule_name,
+            material_summary=input.material_summary,
+            number_of_questions=input.number_of_questions,
+            quiz_type=input.quiz_type,
+            total_score=input.total_score,
+            user_prompt=input.user_prompt
+        )
+        return quiz
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/generate-assignment")
+def api_generate_assignment(input: AssignmentInput):
+    try:
+        assignment = generate_assignment(
+            module_name=input.module_name,
+            submodule_name=input.submodule_name,
+            user_prompt=input.user_prompt,
+            all_submodule_summaries=input.all_submodule_summaries
+        )
+        return {"assignment": assignment}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/generate-mindmap")
+def api_generate_mindmap(input: MindmapInput):
+    try:
+        mindmap = generate_mindmap(
+            module_name=input.module_name,
+            submodule_summaries=input.submodule_summaries
+        )
+        return {"mindmap": mindmap}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
