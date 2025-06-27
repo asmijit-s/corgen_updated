@@ -265,7 +265,7 @@ Return a **JSON array** where each item follows this schema:
 {{
   "question": "<question_text>",
   "options": ["<A>", "<B>", "<C>", "<D>"],  # Omit if T/F
-  "answer": "<correct_answer_text>",
+  "answer": "<correct_option>",  # "A", "B", "C", "D" or "True"/"False"
   "explanation": "<why this is the correct answer>"
 }}
 
