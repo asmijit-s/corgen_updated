@@ -175,7 +175,7 @@ def api_generate_reading(input: ReadingInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/generate-lecture-script")
+@router.post("/generate-lecture-script")
 def api_lecture(input: LectureInput):
     try:
         script, summaries, script_summary = generate_lecture_script(
