@@ -128,7 +128,7 @@ const LecturePage = () => {
 
     // ✅ Save generated content
     activity.content.lectureScript = data.lectureScript;
-    activity.content.summary = `# Summary\n\n(Add summary here or generate one using Gemini)`;
+    activity.content.summary = data.lectureScriptSummary||`# Summary\n\n(Add summary here or generate one using Gemini)`;
 
     localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
     setCourseData(updatedCourse);
@@ -263,6 +263,7 @@ const LecturePage = () => {
       <ReadingEditor generatingcontext="lectureScript" />
       <div className="section-header">Lecture Summary</div>
       <ReadingEditor generatingcontext="summary" />
+      
     </div>
   );
 };

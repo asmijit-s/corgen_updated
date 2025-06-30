@@ -41,39 +41,67 @@ const GenerateQuiz = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    const dummyQuestions = Array.from({ length: parseInt(form.numberOfQuestions) }, (_, i) => {
-      const isMCQ = form.quizType === 'mcq';
-      return {
-        quizQuestion: `Sample Question ${i + 1}`,
-        options: isMCQ
-          ? ['Option A', 'Option B', 'Option C', 'Option D']
-          : ['True', 'False'],
-        correctOptionIndex: 0,
-        explanation: `Explanation for question ${i + 1}`,
-      };
-    });
-
-    const formattedQuestions = dummyQuestions.map(q => ({
-      id: uuidv4(),
-      quizQuestion: q.quizQuestion,
-      options: q.options.map((text, idx) => ({
-        id: uuidv4(),
-        text,
-        isCorrect: idx === q.correctOptionIndex,
-      })),
-      answerExplanation: q.explanation,
-    }));
-
+  try {
     const courseData = JSON.parse(localStorage.getItem('generatedCourse'));
-    if (!courseData?.modules?.[moduleIdx]?.submodules?.[submoduleIdx]?.activities?.[activityIdx]) {
+    const module = courseData?.modules?.[moduleIdx];
+    const submodule = module?.submodules?.[submoduleIdx];
+    const activity = submodule?.activities?.[activityIdx];
+
+    if (!module || !submodule || !activity) {
       alert("Activity not found");
       return;
     }
 
-    courseData.modules[moduleIdx].submodules[submoduleIdx].activities[activityIdx].content = {
+    const payload = {
+      course_outline: courseData.courseOutline || {},
+      module_name: module.module_title || module.moduleName,
+      submodule_name: submodule.submodule_title || submodule.submoduleName,
+      material_summary: "", // optional, for now
+      number_of_questions: parseInt(form.numberOfQuestions),
+      quiz_type: form.quizType,
+      total_score: parseInt(form.numberOfQuestions), // 1 mark per question by default
+      user_prompt: form.instructions || ""
+    };
+
+    const response = await fetch('http://localhost:8000/course/generate-quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to generate quiz');
+    }
+
+    const data = await response.json(); // expects a JSON array of questions
+
+    const formattedQuestions = data.map((q) => {
+      let correctIndex = -1;
+
+      // If answer is like "A", "B", "C", convert to index
+      if (typeof q.answer === "string") {
+        correctIndex = "ABCD".indexOf(q.answer.trim().toUpperCase());
+      } else {
+        correctIndex = parseInt(q.answer); // assume already index
+      }
+
+      return {
+        id: uuidv4(),
+        quizQuestion: q.question,
+        options: q.options?.map((text, idx) => ({
+          id: uuidv4(),
+          text,
+          isCorrect: idx === correctIndex,
+        })) || [], // empty for T/F
+        answerExplanation: q.explanation || "",
+      };
+    });
+
+    activity.content = {
       title: form.title,
       instructions: form.instructions,
       grade: form.grade,
@@ -83,7 +111,12 @@ const GenerateQuiz = () => {
 
     localStorage.setItem('generatedCourse', JSON.stringify(courseData));
     navigate(`/quiz_editor/${moduleIdx}/${submoduleIdx}/${activityIdx}`);
-  };
+  } catch (error) {
+    console.error('Error generating quiz:', error);
+    alert(error.message || 'Failed to generate quiz.');
+  }
+};
+
 
   if (loading) {
     return <div className="quiz-loading">Checking for existing quiz...</div>;
