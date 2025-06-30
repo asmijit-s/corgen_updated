@@ -178,7 +178,7 @@ const ReadingPage = () => {
 
     const data = await response.json();
     const readingMaterial = data.readingMaterial;
-
+    console.log(data.readingMaterial);
     // ✅ Save returned content into localStorage
     activity.content.readingMaterial = readingMaterial;
 
