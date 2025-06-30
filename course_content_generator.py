@@ -11,14 +11,12 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import PyPDF2
 from google import genai
-from google.genai.types import GenerateContentConfig, Content
-
+from google.genai.types import GenerateContentConfig, Content, Part
+from genai_logic import call_llm
 # Load environment
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
-
-app = FastAPI()
 
 # ----------------------------- Constants -----------------------------
 MAX_CHARS_PER_CONTEXT = 12000
@@ -142,14 +140,38 @@ class MindmapInput(BaseModel):
 
 
 class QuizOut(BaseModel):
+    question_id: str
     question: str
     options: Union[List[str], None] = None  # For MCQs
     answer: str
     explanation: str
+
+class QuizSet(BaseModel):
+    module_name: str
+    submodule_name: str
+    questions: List[QuizOut]
+
+class ReadingMaterialOut(BaseModel):
+    reading_material: str
+    reading_material_summary: str
+    source_summaries: Optional[List[str]] = None
+
+class LectureScriptOut(BaseModel):
+    lecture_script: str
+    source_summaries: Optional[List[str]] = None
+    lecture_script_summary: Optional[str] = None
 # ----------------------------- Content Generators -----------------------------
 
-def generate_reading_material(course_outline, module_name, submodule_name, user_prompt,
-                               previous_material_summary, notes_path=None, pdf_path=None, url=None):
+def generate_reading_material(
+    course_outline,
+    module_name,
+    submodule_name,
+    user_prompt,
+    previous_material_summary,
+    notes_path=None,
+    pdf_path=None,
+    url=None
+):
     notes_text = clean_text(read_file(notes_path)) if notes_path else ""
     pdf_text = clean_text(extract_text_from_pdf(pdf_path)) if pdf_path else ""
     url_text = clean_text(scrape_text_from_url(url)) if url else ""
@@ -159,9 +181,9 @@ def generate_reading_material(course_outline, module_name, submodule_name, user_
     summarized_url = summarize_text_with_gemini(url_text, label="web article") if url_text else ""
 
     combined_context = "\n\n".join(filter(None, [
-        f"--- Summary from Notes ---\n{summarized_notes}",
-        f"--- Summary from PDF ---\n{summarized_pdf}",
-        f"--- Summary from URL ---\n{summarized_url}"
+        f"--- Summary from Notes ---\n{summarized_notes}" if summarized_notes else "",
+        f"--- Summary from PDF ---\n{summarized_pdf}" if summarized_pdf else "",
+        f"--- Summary from URL ---\n{summarized_url}" if summarized_url else ""
     ]))
 
     combined_context = truncate_text(combined_context)
@@ -186,40 +208,60 @@ Context:
 {combined_context or 'No additional context provided.'}
 
 ### Output Format:
-Markdown passage with:
-- Clear structure, explanations, examples
-- Code, math, applications
-- Suggested visuals
-- Ending summary
+Return a JSON object with the following fields:
+- reading_material: Markdown passage with clear structure, explanations, examples, code, math, applications, suggested visuals, and ending summary.
+- source_summaries: A list of summaries for notes, PDF, and URL (omit if not available).
 """
 
-    final_material = call_gemini(prompt)
+    user_content = Content(
+        role="user",
+        parts=[
+            Part(text="Generate reading material and summaries based on the following instructions:"),
+        ]
+    )
 
+    response = call_llm(user_content, prompt, ReadingMaterialOut)
+    if response is None:
+        return {"error": "Nothing was generated. Please try again."}, {
+            "notesSummary": summarized_notes,
+            "pdfSummary": summarized_pdf,
+            "urlSummary": summarized_url
+        }
+
+    # Summarize the reading material using the model
     summary_prompt = f"""
 Summarize the following reading material in concise bullet points:
-{final_material}
+{response['reading_material']}
 """
     material_summary = call_gemini(summary_prompt)
+    if not material_summary:
+        material_summary = ""
 
     return {
-        "readingMaterial": final_material,
-        "readingMaterialSummary": material_summary
+        "readingMaterial": response["reading_material"],
+        "readingMaterialSummary": material_summary,
+        "sourceSummaries": response.get("source_summaries")
     }, {
         "notesSummary": summarized_notes,
         "pdfSummary": summarized_pdf,
         "urlSummary": summarized_url
     }
 
-def generate_lecture_script(course_outline, module_name, submodule_name, user_prompt,
-                            prev_activities_summary=None,
-                            notes_path=None, pdf_path=None,
-                            text_examples: Optional[List[str]] = None,
-                            duration_minutes: int = 10):
-
+def generate_lecture_script(
+    course_outline,
+    module_name,
+    submodule_name,
+    user_prompt,
+    prev_activities_summary=None,
+    notes_path=None,
+    pdf_path=None,
+    text_examples: Optional[List[str]] = None,
+    duration_minutes: int = 10
+):
     notes_text = clean_text(extract_text_from_txt(notes_path)) if notes_path else ""
     pdf_text = clean_text(extract_text_from_pdf(pdf_path)) if pdf_path else ""
     examples_text = "\n".join(text_examples or [])
-    
+
     summarized_notes = summarize_text_with_gemini(notes_text, label="lecture notes") if notes_text else ""
     summarized_pdf = summarize_text_with_gemini(pdf_text, label="PDF reference") if pdf_text else ""
     summarized_examples = summarize_text_with_gemini(examples_text, label="example explanations") if examples_text else ""
@@ -253,49 +295,51 @@ Submodule: {submodule_name}
 User Prompt: {user_prompt}
 Duration: {duration_minutes} minutes
 
-
 ### Context:
 {combined_context or 'No prior material provided.'}
 
 ### Output:
-Return the full lecture script in markdown format, with proper headings, speaker notes, and segments.
-"""
-    lecture_script = call_gemini(prompt)
+Return a JSON object with the following fields:
+- lecture_script: The full lecture script in markdown format, with proper headings, speaker notes, and segments.
+- source_summaries: A list of summaries for notes, PDF, and examples (omit if not available).
+- lecture_script_summary: A concise summary of the lecture script (see below).
 
-    summary_prompt = f"""
-You are a summarizer.
-
-Summarize the following lecture script:
+After generating the script, summarize it as follows:
 - List key concepts covered
 - Highlight learning objectives and takeaways
 - Mention if analogies/examples were used
 
-### Lecture Script:
-{truncate_text(lecture_script)}
-
-### Output Format:
 Return in bullet points, grouped under "Key Concepts", "Learning Goals", and "Examples or Analogies".
 """
 
-    lecture_script_summary = call_gemini(summary_prompt)
+    user_content = Content(
+        role="user",
+        parts=[
+            Part(text="Generate a lecture script and summary based on the following instructions:"),
+        ]
+    )
 
-    print("\n--- Lecture Input Summaries ---")
-    print("Notes:", summarized_notes)
-    print("PDF:", summarized_pdf)
-    print("Examples:", summarized_examples)
+    response = call_llm(user_content, prompt, LectureScriptOut)
+    if response is None:
+        return {"error": "Nothing was generated. Please try again."}, {
+            "notesSummary": summarized_notes,
+            "pdfSummary": summarized_pdf,
+            "examplesSummary": summarized_examples
+        }, None
 
-    print("\n--- Lecture Script Summary ---")
-    print(lecture_script_summary)
-
-    return lecture_script, {
-        "notesSummary": summarized_notes,
-        "pdfSummary": summarized_pdf,
-        "examplesSummary": summarized_examples
-    }, lecture_script_summary
+    return (
+        response["lecture_script"],
+        {
+            "notesSummary": summarized_notes,
+            "pdfSummary": summarized_pdf,
+            "examplesSummary": summarized_examples
+        },
+        response.get("lecture_script_summary")
+    )
 
 def generate_quiz(module_name: str, submodule_name: str, material_summary: str,
                   number_of_questions: int, quiz_type: str, total_score: int,
-                  user_prompt: str) -> List[Dict]:
+                  user_prompt: str) -> Optional[Dict]:
 
     prompt = f"""
 You are a quiz designer for an educational AI system.
@@ -317,6 +361,7 @@ Generate a quiz for the **submodule** "{submodule_name}" under the module "{modu
 ### Output Format:
 Return a **JSON array** where each item follows this schema:
 {{
+  "question_id": "<unique_id>",  # e.g. "Q1", "Q2", etc.
   "question": "<question_text>",
   "options": ["<A>", "<B>", "<C>", "<D>"],  # Omit if T/F
   "answer": "<correct_option>",  # "A", "B", "C", "D" or "True"/"False"
@@ -328,14 +373,14 @@ Return a **JSON array** where each item follows this schema:
 - For **T/F**, avoid ambiguity and give direct true/false questions.
 - Only return the JSON array. No markdown or comments.
 """
-
-    response = call_gemini(prompt)
-    try:
-        if response.startswith("```json"):
-            response = response.strip("```json").strip("```").strip()
-        return json.loads(response)
-    except Exception as e:
-        raise ValueError(f"Quiz JSON parsing failed: {e}")
+    user_content=Content(
+        role="user",
+        parts=[
+            Part(text="Generate a quiz based on the following instructions:"),
+        ]
+    )
+    response = call_llm(user_content, prompt, QuizSet)
+    return response if response is not None else {"error": "Nothing was generated. Please try again."}
 
 
 def generate_assignment(module_name, submodule_name, user_prompt, all_submodule_summaries):

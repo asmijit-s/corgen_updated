@@ -29,7 +29,9 @@ from course_content_generator import (
     QuizInput,
     AssignmentInput,
     MindmapInput,
-    QuizOut
+    QuizOut,
+    ReadingMaterialOut,
+    LectureScriptOut
 )
 import json
 import logging
@@ -136,28 +138,13 @@ def generate_activity(payload: ActivityRequest):
     suggestions = get_stage_suggestions(Stage.activity, as_json(result))
     return {"result": result, "suggestions": suggestions}
 
-@router.post("/redo")
-def redo_any_stage(request: RedoRequest):
-    logger.info(f"Redoing stage: {request.stage}")
-    found_prev= request.prev_content
-    # Call the unified redo_stage function
-    result_str = redo_stage(request.stage, prev_content=found_prev, user_message=request.user_message)
-    if isinstance(result_str, dict):
-        result_str = json.dumps(result_str)
-    result_str = parse_result(result_str, CourseOutline if request.stage == Stage.outline else ModuleSet if request.stage == Stage.module else SubmoduleSet if request.stage == Stage.submodule else ActivitySet)
-    suggestions = get_stage_suggestions(request.stage, as_json(result_str))
-    return {"result": result_str, "suggestions": suggestions}
 
-# course_content_generator.py (complete with endpoints)
 
-# ... (imports, utilities, models, and content generators already defined above) ...
-
-# ----------------------------- API Endpoints -----------------------------
-
-@router.post("/generate-reading-material")
+@router.post("/generate-reading-material", response_model=ReadingMaterialOut)
 def api_generate_reading(input: ReadingInput):
     try:
-        output, summaries = generate_reading_material(
+        # generate_reading_material now returns a ReadingMaterialOut directly
+        result = generate_reading_material(
             course_outline=input.course_outline,
             module_name=input.module_name,
             submodule_name=input.submodule_name,
@@ -167,18 +154,15 @@ def api_generate_reading(input: ReadingInput):
             pdf_path=input.pdf_path,
             url=input.url
         )
-        return {
-            "readingMaterial": output["readingMaterial"],
-            "readingMaterialSummary": output["readingMaterialSummary"],
-            "sourceSummaries": summaries
-        }
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/generate-lecture-script")
+@router.post("/generate-lecture-script", response_model=LectureScriptOut)
 def api_lecture(input: LectureInput):
     try:
-        script, summaries, script_summary = generate_lecture_script(
+        # generate_lecture_script now returns a LectureScriptOut directly
+        result = generate_lecture_script(
             course_outline=input.course_outline,
             module_name=input.module_name,
             submodule_name=input.submodule_name,
@@ -189,11 +173,7 @@ def api_lecture(input: LectureInput):
             text_examples=input.text_examples,
             duration_minutes=input.duration_minutes if input.duration_minutes is not None else 0
         )
-        return {
-            "lectureScript": script,
-            "sourceSummaries": summaries,
-            "lectureScriptSummary": script_summary
-        }
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -201,7 +181,7 @@ def api_lecture(input: LectureInput):
 @router.post("/generate-quiz", response_model=List[QuizOut])
 def api_generate_quiz(input: QuizInput):
     try:
-        quiz = generate_quiz(
+        quiz_list = generate_quiz(
             module_name=input.module_name,
             submodule_name=input.submodule_name,
             material_summary=input.material_summary,
@@ -210,7 +190,10 @@ def api_generate_quiz(input: QuizInput):
             total_score=input.total_score,
             user_prompt=input.user_prompt
         )
-        return quiz
+        # If generate_quiz now returns a dict with a "quizzes" key, extract it
+        if isinstance(quiz_list, dict) and "quizzes" in quiz_list:
+            quiz_list = quiz_list["quizzes"]
+        return quiz_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -238,3 +221,14 @@ def api_generate_mindmap(input: MindmapInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/redo")
+def redo_any_stage(request: RedoRequest):
+    logger.info(f"Redoing stage: {request.stage}")
+    found_prev= request.prev_content
+    # Call the unified redo_stage function
+    result_str = redo_stage(request.stage, prev_content=found_prev, user_message=request.user_message)
+    if isinstance(result_str, dict):
+        result_str = json.dumps(result_str)
+    result_str = parse_result(result_str, CourseOutline if request.stage == Stage.outline else ModuleSet if request.stage == Stage.module else SubmoduleSet if request.stage == Stage.submodule else ActivitySet)
+    suggestions = get_stage_suggestions(request.stage, as_json(result_str))
+    return {"result": result_str, "suggestions": suggestions}

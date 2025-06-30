@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional, Type
 import json
 from pydantic import BaseModel, field_validator, model_validator
-
+from course_content_generator import QuizOut, ReadingMaterialOut, LectureScriptOut
 load_dotenv()
 
 llmclient = genai.Client(api_key=os.getenv("GOOGLE_API_KEY")) 
@@ -40,6 +40,9 @@ def call_llm(prompt: Content, system_prompt: str, response_schema: Type[BaseMode
     
 ################################# SCHEMAS DICT ######################################################
 SchemaDict = {}
+SchemaDict["quiz"]=QuizOut
+SchemaDict["reading"]=ReadingMaterialOut
+SchemaDict["lecture"]=LectureScriptOut
 ################################# OUTLINE GENERATION ######################################################
 
 
@@ -303,28 +306,31 @@ class Stage(str, Enum):
 
 def get_stage_suggestions(stage: Stage, context: str, feedback_mode: str = "light") -> Optional[dict]:
     prompt = f"""
-You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses.
+You are a course design assistant supporting Subject Matter Experts (SMEs) in developing high-quality academic courses.
 
-The course development process follows these stages:
-1. **Outline Generation**: Includes title, prerequisites, description, learning outcomes, duration, credits.
-2. **Module Creation**: Divides the course into coherent, topic-wise modules.
-3. **Submodule Creation**: Each module is broken down into smaller, focused submodules.
-4. **Activity Design**: Learning activities (lectures, quizzes, reading material, assignments, labs) are added under each submodule.
+The course development process includes these stages:
+1. **Outline Generation**: Define title, prerequisites, description, learning outcomes, duration, and credits.
+2. **Module Creation**: Organize the course into logical, topic-based modules.
+3. **Submodule Creation**: Break each module into focused, progressive submodules.
+4. **Activity Design**: Add learning activities (lectures, quizzes, readings, assignments, labs) under each submodule.
 
-You are currently reviewing the course at the **'{stage}'** stage.
+You are reviewing the course at the **'{stage}'** stage.
 
-Please analyze the context below and return {"concise" if feedback_mode == "light" else "detailed"} suggestions for improving, expanding, or refining the content at this stage. If any important element is missing or can be clarified further, mention that as well.
+Analyze the provided context and return {"concise" if feedback_mode == "light" else "detailed"} suggestions to improve, expand, or refine the content at this stage. Identify any missing or unclear elements and recommend enhancements.
 
-STAGE_INSTRUCTIONS:
-- "outline": "Focus on improving clarity, completeness of prerequisites, alignment between objectives and outcomes, and coherence of description.",
-- "module": "Ensure logical grouping of topics, coverage of all outcomes, and balanced workload.",
-- "submodule": "Check for progression, granularity, and coverage of all module elements.",
-- "activity": "Suggest diverse pedagogical techniques, align with Bloom's taxonomy, ensure student engagement."
+STAGE INSTRUCTIONS:
+- "outline": Improve clarity, ensure prerequisites are complete, align objectives and outcomes, and check description coherence.
+- "module": Ensure logical topic grouping, full coverage of outcomes, and balanced workload.
+- "submodule": Check for logical progression, appropriate granularity, and coverage of all module elements.
+- "activity": Suggest varied pedagogical techniques, align with Bloom's taxonomy, and promote student engagement.
+- "lecture": Enhance examples, clarify explanations, align with learning outcomes, and adjust methodology or duration as needed for coherence.
+- "reading": Ensure material is engaging, relevant, and appropriately challenging; include diverse sources and formats.
+- "quiz": Design quizzes that assess understanding, align with objectives, and include varied question types and difficulty.
 
 Current Context:
 {context}
 
-Read the stage instructions carefully.
+Carefully follow the stage instructions and provide actionable, stage-appropriate suggestions.
 """
 
     try:
