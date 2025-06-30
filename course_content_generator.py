@@ -40,6 +40,13 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     except Exception as e:
         raise ValueError(f"Failed to extract text from PDF: {e}")
 
+def extract_text_from_txt(txt_path: str) -> str:
+    try:
+        with open(txt_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception as e:
+        raise ValueError(f"Failed to read text file: {e}")
+
 def scrape_text_from_url(url: str) -> str:
     try:
         response = requests.get(url, timeout=10)
@@ -108,11 +115,11 @@ class LectureInput(BaseModel):
     module_name: str
     submodule_name: str
     user_prompt: str
-    prev_activities_summary: str
-    notes_path: Optional[str] = None
-    pdf_path: Optional[str] = None
-    text_examples: Optional[Union[str, List[str]]] = None
-    duration_minutes: Optional[int] = None
+    prev_activities_summary: Union[str, None] = None
+    notes_path: Union[str, None] = None
+    pdf_path: Union[str, None] = None
+    text_examples: Union[List[str], None] = None
+    duration_minutes: Union[int, None] = 10
 
 class QuizInput(BaseModel):
     module_name: str
@@ -204,40 +211,87 @@ Summarize the following reading material in concise bullet points:
     }
 
 def generate_lecture_script(course_outline, module_name, submodule_name, user_prompt,
-                            prev_activities_summary, notes_path=None, pdf_path=None,
-                            text_examples=None, duration_minutes=None):
+                            prev_activities_summary=None,
+                            notes_path=None, pdf_path=None,
+                            text_examples: Optional[List[str]] = None,
+                            duration_minutes: int = 10):
 
-    notes_text = read_file(notes_path) if notes_path else ""
-    pdf_text = extract_text_from_pdf(pdf_path) if pdf_path else ""
-    examples_text = "\n".join(text_examples) if isinstance(text_examples, list) else (text_examples or "")
+    notes_text = clean_text(extract_text_from_txt(notes_path)) if notes_path else ""
+    pdf_text = clean_text(extract_text_from_pdf(pdf_path)) if pdf_path else ""
+    examples_text = "\n".join(text_examples or [])
+    
+    summarized_notes = summarize_text_with_gemini(notes_text, label="lecture notes") if notes_text else ""
+    summarized_pdf = summarize_text_with_gemini(pdf_text, label="PDF reference") if pdf_text else ""
+    summarized_examples = summarize_text_with_gemini(examples_text, label="example explanations") if examples_text else ""
+
+    combined_context = "\n\n".join([
+        f"--- Notes Summary ---\n{summarized_notes}" if summarized_notes else "",
+        f"--- PDF Summary ---\n{summarized_pdf}" if summarized_pdf else "",
+        f"--- Example Summary ---\n{summarized_examples}" if summarized_examples else "",
+        f"--- Previous Activities Summary ---\n{prev_activities_summary}" if prev_activities_summary else ""
+    ]).strip()
+
+    combined_context = truncate_text(combined_context)
 
     prompt = f"""
 You are a skilled educator and video content designer.
-Create a **lecture script** with:
-- Conversational tone, structure, and hooks
-- Speaker notes, explanation points
-- Duration: {duration_minutes or 'Unspecified'} minutes
+
+Create a **lecture script** for the following submodule of an AI course.
+
+- The tone should match the user's prompt
+- Include key explanations and smooth transitions
+- Make it suitable for a {duration_minutes}-minute video
+- Use examples and engaging analogies when possible
 
 ### Input:
+
 Course Outline:
 {course_outline_to_text(course_outline)}
+
 Module: {module_name}
 Submodule: {submodule_name}
 User Prompt: {user_prompt}
-Previous Summary:
-{prev_activities_summary}
+Duration: {duration_minutes} minutes
 
-Notes:
-{notes_text or 'None'}
-PDF:
-{pdf_text or 'None'}
-Examples:
-{examples_text or 'None'}
+
+### Context:
+{combined_context or 'No prior material provided.'}
+
+### Output:
+Return the full lecture script in markdown format, with proper headings, speaker notes, and segments.
+"""
+    lecture_script = call_gemini(prompt)
+
+    summary_prompt = f"""
+You are a summarizer.
+
+Summarize the following lecture script:
+- List key concepts covered
+- Highlight learning objectives and takeaways
+- Mention if analogies/examples were used
+
+### Lecture Script:
+{truncate_text(lecture_script)}
 
 ### Output Format:
-Markdown lecture script with speaker cues and segment summaries
+Return in bullet points, grouped under "Key Concepts", "Learning Goals", and "Examples or Analogies".
 """
-    return call_gemini(prompt)
+
+    lecture_script_summary = call_gemini(summary_prompt)
+
+    print("\n--- Lecture Input Summaries ---")
+    print("Notes:", summarized_notes)
+    print("PDF:", summarized_pdf)
+    print("Examples:", summarized_examples)
+
+    print("\n--- Lecture Script Summary ---")
+    print(lecture_script_summary)
+
+    return lecture_script, {
+        "notesSummary": summarized_notes,
+        "pdfSummary": summarized_pdf,
+        "examplesSummary": summarized_examples
+    }, lecture_script_summary
 
 def generate_quiz(module_name: str, submodule_name: str, material_summary: str,
                   number_of_questions: int, quiz_type: str, total_score: int,

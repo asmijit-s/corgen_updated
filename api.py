@@ -187,7 +187,7 @@ def api_lecture(input: LectureInput):
             notes_path=input.notes_path,
             pdf_path=input.pdf_path,
             text_examples=input.text_examples,
-            duration_minutes=input.duration_minutes
+            duration_minutes=input.duration_minutes if input.duration_minutes is not None else 0
         )
         return {
             "lectureScript": script,
