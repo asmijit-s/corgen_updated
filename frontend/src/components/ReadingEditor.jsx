@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
 import { FontSize } from "./font-size";
-import CodeBlockWithCopy from "./customCodeblock";
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
+import javascript from 'highlight.js/lib/languages/javascript';
+import python from 'highlight.js/lib/languages/python';
 import html2canvas from "html2canvas";
 import Placeholder from "@tiptap/extension-placeholder";
 import Mathematics from "@tiptap/extension-mathematics";
@@ -44,7 +45,9 @@ const convertToMarkdown = (content) => {
     .replace(/\n{3,}/g, '\n\n') // Limit excessive blank lines
     .trim(); // Clean up trailing whitespace
 };
-
+const lowlight = createLowlight()
+lowlight.register('javascript', javascript);
+lowlight.register('python', python);
 
 const ReadingEditor = ({ generatingcontext }) => {
     console.log(generatingcontext);
@@ -74,18 +77,18 @@ const ReadingEditor = ({ generatingcontext }) => {
     return activity?.content?.[generatingcontext] || defaultContent;
   });
 
-  const CustomCodeBlock = CodeBlockLowlight.extend({
-    addNodeView() {
-        return ({ node }) => <CodeBlockWithCopy node={node} />;
-    },
-    }).configure({ lowlight });
   const editor = useEditor({
   extensions: [
     StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false}),
     Underline,
     TextStyle,
     FontSize,
-     CustomCodeBlock,
+    CodeBlockLowlight.configure({
+    lowlight,
+    HTMLAttributes: {
+        class: 'custom-code-block',
+    },
+    }),
     TextAlign.configure({ types: ["heading", "paragraph"] }),
     Highlight.configure({ multicolor: true }),
     Placeholder.configure({
@@ -121,7 +124,7 @@ const ReadingEditor = ({ generatingcontext }) => {
       transformCopiedText: true,
     }),
   ],
-  content: convertToMarkdown(initialContent),
+  content: (initialContent),
   onUpdate({ editor }) {
   const content = viewMode === "wysiwyg" 
     ? editor.getHTML()
@@ -156,7 +159,7 @@ localStorage.setItem("generatedCourse", JSON.stringify(ctx.course));
   if (editor) {
     const { activity } = getCurrentActivity() || {};
     const storedContent = activity?.content?.[generatingcontext] || defaultContent;
-    const converted = convertToMarkdown(storedContent);
+    const converted = (storedContent);
     setMarkdownContent(converted);
     
     // Create temporary element to parse HTML
