@@ -7,7 +7,7 @@ const GenerateQuiz = () => {
   const navigate = useNavigate();
   const [hasExistingQuiz, setHasExistingQuiz] = useState(false);
   const [loading, setLoading] = useState(true);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     instructions: '',
     quizType: 'mcq',
@@ -43,7 +43,7 @@ const GenerateQuiz = () => {
 
   const handleSubmit = async (e) => {
   e.preventDefault();
-
+  setIsSubmitting(true);
   try {
     const courseData = JSON.parse(localStorage.getItem('generatedCourse'));
     const module = courseData?.modules?.[moduleIdx];
@@ -114,6 +114,8 @@ const GenerateQuiz = () => {
   } catch (error) {
     console.error('Error generating quiz:', error);
     alert(error.message || 'Failed to generate quiz.');
+  } finally {
+    setIsSubmitting(false);
   }
 };
 
@@ -204,8 +206,8 @@ const GenerateQuiz = () => {
             </div>
           </div>
 
-          <button type="submit" className="generate-button">
-            Generate Quiz Structure
+          <button type="submit" className="generate-button" disabled={isSubmitting}>
+            {isSubmitting ? 'Generating...' : 'Generate Quiz'}
             <svg className="button-icon" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>

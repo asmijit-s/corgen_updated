@@ -103,7 +103,7 @@ img.align-center {
   width: 14px;
   height: 14px;
 }
-button {
+.formatting-buttons button {
   padding: 6px 12px;
   background: white;
   border: 1px solid #ddd;
@@ -112,11 +112,11 @@ button {
   font-size: 14px;
 }
 
-button:hover {
+.formatting-buttons button:hover {
   background: #f0f0f0;
 }
 
-button.is-active {
+.formatting-buttons button.is-active {
   background: #e0e0e0;
   font-weight: bold;
 }
