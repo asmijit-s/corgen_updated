@@ -29,7 +29,7 @@ const stepToPathMap = {
   4: '/submodules',
   5: '/activities',
   6: '/blueprint',
-  7: '/content'
+  7: '/generate'
 };
 
 const CourseGenerationProgress = () => {
@@ -51,7 +51,7 @@ if (currentPath === '/') {
   currentStep = 5;
 } else if (currentPath === '/blueprint') {
   currentStep = 6;
-} else if (currentPath === '/generate'||currentPath.startsWith('/generate_lecture') ||currentPath.startsWith('/generate_reading')  ||currentPath.startsWith('/generate_quiz')  ||currentPath.startsWith('/upload_document') ) {
+} else if (currentPath === '/generate'||currentPath.startsWith('/generate_lecture') ||currentPath.startsWith('/generate_reading') ||currentPath.startsWith('/quiz_editor')   ||currentPath.startsWith('/generate_quiz')  ||currentPath.startsWith('/upload_document') ) {
   currentStep = 7;
 }
 

@@ -55,7 +55,11 @@ const GenerationPage = () => {
         'reading': 'generate_reading',
         'lecture': 'generate_lecture',
         'quiz': 'generate_quiz',
-        'assignment': 'generate_assignment'
+        'assignment': 'generate_assignment',
+        'Reading': 'generate_reading',
+        'Lecture': 'generate_lecture',
+        'Quiz': 'generate_quiz',
+        'Assignment': 'generate_assignment',
       };
       const baseRoute = routeMap[activity.activity_type] || 'generate_reading';
       navigate(`/${baseRoute}/${moduleId}/${submoduleId}/${activityIndex}`);

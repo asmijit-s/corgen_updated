@@ -97,6 +97,119 @@ function generateOptionsFromLocalStorage(context = 'outline') {
       return [{ label: "All", value: "all", fullValue: activities }, ...options];
     }
   }
+  if (context === 'lecture') {
+  const path = window.location.pathname;
+  const match = path.match(/\/(\d+)\/(\d+)\/(\d+)/); // matches /:moduleId/:submoduleId/:activity_idx
+  const moduleIndex = match ? parseInt(match[1]) : null;
+  const submoduleIndex = match ? parseInt(match[2]) : null;
+  const activityIndex = match ? parseInt(match[3]) : null;
+
+  if (
+    moduleIndex !== null &&
+    submoduleIndex !== null &&
+    Array.isArray(data.modules) &&
+    data.modules[moduleIndex]?.submodules &&
+    data.modules[moduleIndex].submodules[submoduleIndex]?.activities
+  ) {
+    const activities = data.modules[moduleIndex].submodules[submoduleIndex].activities;
+
+    const options = [];
+
+    // Push lecture script option
+    if (activities[activityIndex]?.content?.lectureScript) {
+      options.push({
+        label: "Lecture Script",
+        value: "lectureScript",
+        fullValue: activities[activityIndex].content.lectureScript
+      });
+    }
+
+    // Push summary option
+    if (activities[activityIndex]?.content?.summary) {
+      options.push({
+        label: "Summary",
+        value: "summary",
+        fullValue: activities[activityIndex].content.summary
+      });
+    }
+
+    // Push "All" if both lecture and summary exist
+    if (
+      activities[activityIndex]?.content?.lectureScript &&
+      activities[activityIndex]?.content?.summary
+    ) {
+      options.unshift({
+        label: "All",
+        value: "all",
+        fullValue: {
+          lectureScript: activities[activityIndex].content.lectureScript,
+          summary: activities[activityIndex].content.summary
+        }
+      });
+    }
+
+    return options;
+  }
+}
+if (context === 'reading') {
+  const path = window.location.pathname;
+  const match = path.match(/\/(\d+)\/(\d+)\/(\d+)/); // /:moduleId/:submoduleId/:activity_idx
+  const moduleIndex = match ? parseInt(match[1]) : null;
+  const submoduleIndex = match ? parseInt(match[2]) : null;
+  const activityIndex = match ? parseInt(match[3]) : null;
+
+  if (
+    moduleIndex !== null &&
+    submoduleIndex !== null &&
+    Array.isArray(data.modules) &&
+    data.modules[moduleIndex]?.submodules?.[submoduleIndex]?.activities?.[activityIndex]
+  ) {
+    const reading = data.modules[moduleIndex].submodules[submoduleIndex].activities[activityIndex]?.content?.readingMaterial;
+
+    if (reading) {
+      return [{
+        label: "Reading Material",
+        value: "readingMaterial",
+        fullValue: reading
+      }];
+    }
+  }
+}
+
+if (context === 'quiz') {
+  const path = window.location.pathname;
+  const match = path.match(/\/(\d+)\/(\d+)\/(\d+)/); // /:moduleId/:submoduleId/:activity_idx
+  const moduleIndex = match ? parseInt(match[1]) : null;
+  const submoduleIndex = match ? parseInt(match[2]) : null;
+  const activityIndex = match ? parseInt(match[3]) : null;
+
+  if (
+    moduleIndex !== null &&
+    submoduleIndex !== null &&
+    Array.isArray(data.modules) &&
+    data.modules[moduleIndex]?.submodules?.[submoduleIndex]?.activities?.[activityIndex]
+  ) {
+    const quizContent = data.modules[moduleIndex].submodules[submoduleIndex].activities[activityIndex]?.content;
+    const questions = quizContent?.questions || [];
+
+    const options = questions.map((q, idx) => ({
+      label: q.quizQuestion?.trim() ? q.quizQuestion : `Question ${idx + 1}`,
+      value: `${idx}`,
+      fullValue: questions
+    }));
+
+    if (questions.length > 0) {
+      options.unshift({
+        label: "All",
+        value: "all",
+        fullValue: questions
+      });
+    }
+
+    return options;
+  }
+}
+
   return [];
 }
 
@@ -138,6 +251,15 @@ function AppContent() {
     }else if (location.pathname.includes("/activities/")) {
       setOptions(generateOptionsFromLocalStorage("activities"));
       setstage("activity");
+    }else if (location.pathname.includes("/generate_lecture/")) {
+      setOptions(generateOptionsFromLocalStorage("lecture"));
+      setstage("lecture");
+    }else if (location.pathname.includes("/generate_reading/")) {
+      setOptions(generateOptionsFromLocalStorage("reading"));
+      setstage("reading");
+    }else if (location.pathname.includes("/quiz_editor/")) {
+      setOptions(generateOptionsFromLocalStorage("quiz"));
+      setstage("quiz");
     } else {
       setOptions([]);
     }
