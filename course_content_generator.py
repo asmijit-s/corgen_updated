@@ -12,7 +12,6 @@ from pydantic import BaseModel
 import PyPDF2
 from google import genai
 from google.genai.types import GenerateContentConfig, Content, Part
-from genai_logic import call_llm
 # Load environment
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -73,6 +72,30 @@ def call_gemini(prompt: str) -> str:
     )
     raw = response.text.strip() if response.text else ""
     return re.sub(r'^```(?:json)?|```$', '', raw.strip())
+
+def call_llm(prompt: Content, system_prompt: str, response_schema: Type[BaseModel], debug: bool = False) -> Optional[dict]:
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json",
+                response_schema=response_schema,
+                temperature=0.2
+            )
+        )
+        if debug or True:  # force debug always for now
+            print(f"\n=== LLM RAW RESPONSE ===\n{response.text}\n=== END ===\n")
+
+        parsed_response = None
+        if response.text is not None:
+            parsed_response = json.loads(response.text)
+        return parsed_response
+
+    except Exception as e:
+        print(f"LLM call failed: {e}")
+        return None
 
 # ----------------------------- Prompt Helpers -----------------------------
 
@@ -181,15 +204,16 @@ def generate_reading_material(
     summarized_url = summarize_text_with_gemini(url_text, label="web article") if url_text else ""
 
     combined_context = "\n\n".join(filter(None, [
-        f"--- Summary from Notes ---\n{summarized_notes}" if summarized_notes else "",
-        f"--- Summary from PDF ---\n{summarized_pdf}" if summarized_pdf else "",
-        f"--- Summary from URL ---\n{summarized_url}" if summarized_url else ""
-    ]))
+        f"--- Summary from Notes ---\n{summarized_notes}",
+        f"--- Summary from PDF ---\n{summarized_pdf}",
+        f"--- Summary from URL ---\n{summarized_url}"
+    ])).strip()
 
     combined_context = truncate_text(combined_context)
 
     prompt = f"""
 You are an expert Math/Data Analyst/Machine Learning/Deep Learning/Generative AI educator.
+
 Create **reading material** for a submodule. Ensure:
 - Alignment with course outline
 - Avoid redundancy with previous materials
@@ -216,36 +240,41 @@ Return a JSON object with the following fields:
     user_content = Content(
         role="user",
         parts=[
-            Part(text="Generate reading material and summaries based on the following instructions:"),
+            Part(text="Generate reading material and summaries based on the following instructions:")
         ]
     )
 
     response = call_llm(user_content, prompt, ReadingMaterialOut)
     if response is None:
-        return {"error": "Nothing was generated. Please try again."}, {
+        return ReadingMaterialOut(
+            reading_material="Nothing was generated. Please try again.",
+            reading_material_summary="",
+            source_summaries=None
+        ), {
             "notesSummary": summarized_notes,
             "pdfSummary": summarized_pdf,
             "urlSummary": summarized_url
         }
 
-    # Summarize the reading material using the model
-    summary_prompt = f"""
+    # Fallback summarization (auto-summarize if missing)
+    material_summary = response.get("reading_material_summary")
+    if not material_summary:
+        summary_prompt = f"""
 Summarize the following reading material in concise bullet points:
 {response['reading_material']}
 """
-    material_summary = call_gemini(summary_prompt)
-    if not material_summary:
-        material_summary = ""
+        material_summary = call_gemini(summary_prompt) or ""
 
-    return {
-        "readingMaterial": response["reading_material"],
-        "readingMaterialSummary": material_summary,
-        "sourceSummaries": response.get("source_summaries")
-    }, {
+    return ReadingMaterialOut(
+        reading_material=response["reading_material"],
+        reading_material_summary=material_summary,
+        source_summaries=response.get("source_summaries")
+    ), {
         "notesSummary": summarized_notes,
         "pdfSummary": summarized_pdf,
         "urlSummary": summarized_url
     }
+
 
 def generate_lecture_script(
     course_outline,
@@ -327,15 +356,33 @@ Return in bullet points, grouped under "Key Concepts", "Learning Goals", and "Ex
             "examplesSummary": summarized_examples
         }, None
 
+    lecture_script = response["lecture_script"]
+    lecture_script_summary = response.get("lecture_script_summary")
+
+    # ✅ Auto-generate summary if not provided by LLM
+    if not lecture_script_summary:
+        summary_prompt = f"""
+Summarize the following lecture script in bullet points grouped by:
+
+- Key Concepts
+- Learning Goals
+- Examples or Analogies
+
+Lecture Script:
+{lecture_script}
+"""
+        lecture_script_summary = call_gemini(summary_prompt) or ""
+
     return (
-        response["lecture_script"],
+        lecture_script,
         {
             "notesSummary": summarized_notes,
             "pdfSummary": summarized_pdf,
             "examplesSummary": summarized_examples
         },
-        response.get("lecture_script_summary")
+        lecture_script_summary
     )
+
 
 def generate_quiz(module_name: str, submodule_name: str, material_summary: str,
                   number_of_questions: int, quiz_type: str, total_score: int,

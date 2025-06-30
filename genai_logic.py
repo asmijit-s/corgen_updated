@@ -303,6 +303,10 @@ class Stage(str, Enum):
     module = "module"
     submodule = "submodule"
     activity = "activity"
+    reading = "reading"
+    lecture = "lecture"
+    quiz = "quiz"
+
 
 def get_stage_suggestions(stage: Stage, context: str, feedback_mode: str = "light") -> Optional[dict]:
     prompt = f"""

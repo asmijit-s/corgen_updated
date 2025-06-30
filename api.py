@@ -143,8 +143,7 @@ def generate_activity(payload: ActivityRequest):
 @router.post("/generate-reading-material", response_model=ReadingMaterialOut)
 def api_generate_reading(input: ReadingInput):
     try:
-        # generate_reading_material now returns a ReadingMaterialOut directly
-        result = generate_reading_material(
+        result, _ = generate_reading_material(
             course_outline=input.course_outline,
             module_name=input.module_name,
             submodule_name=input.submodule_name,
@@ -158,11 +157,12 @@ def api_generate_reading(input: ReadingInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/generate-lecture-script", response_model=LectureScriptOut)
 def api_lecture(input: LectureInput):
     try:
         # generate_lecture_script now returns a LectureScriptOut directly
-        result = generate_lecture_script(
+        script, summaries, summary_text = generate_lecture_script(
             course_outline=input.course_outline,
             module_name=input.module_name,
             submodule_name=input.submodule_name,
@@ -173,7 +173,15 @@ def api_lecture(input: LectureInput):
             text_examples=input.text_examples,
             duration_minutes=input.duration_minutes if input.duration_minutes is not None else 0
         )
-        return result
+        # If script is a dict, extract the main script text (assuming key 'lecture_script' or similar)
+        script_text = script.get("lecture_script") if isinstance(script, dict) else script
+        if script_text is None:
+            script_text = ""
+        return LectureScriptOut(
+            lecture_script=script_text,
+            source_summaries=summaries if isinstance(summaries, list) else None,
+            lecture_script_summary=summary_text
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -224,11 +232,33 @@ def api_generate_mindmap(input: MindmapInput):
 @router.post("/redo")
 def redo_any_stage(request: RedoRequest):
     logger.info(f"Redoing stage: {request.stage}")
-    found_prev= request.prev_content
-    # Call the unified redo_stage function
+    found_prev = request.prev_content
+
+    # Step 1: Get raw response string or dict from redo_stage
     result_str = redo_stage(request.stage, prev_content=found_prev, user_message=request.user_message)
+
+    # Step 2: If already a dict, convert to JSON string
     if isinstance(result_str, dict):
         result_str = json.dumps(result_str)
-    result_str = parse_result(result_str, CourseOutline if request.stage == Stage.outline else ModuleSet if request.stage == Stage.module else SubmoduleSet if request.stage == Stage.submodule else ActivitySet)
-    suggestions = get_stage_suggestions(request.stage, as_json(result_str))
-    return {"result": result_str, "suggestions": suggestions}
+
+    # Step 3: Map stage to appropriate schema
+    schema_map = {
+        Stage.outline: CourseOutline,
+        Stage.module: ModuleSet,
+        Stage.submodule: SubmoduleSet,
+        Stage.activity: ActivitySet,
+        Stage.reading: ReadingMaterialOut,
+        Stage.lecture: LectureScriptOut,
+        Stage.quiz: QuizOut,
+    }
+
+    schema = schema_map.get(request.stage)
+    if schema is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported stage: {request.stage}")
+    result = parse_result(result_str, schema)
+    suggestions = get_stage_suggestions(request.stage, as_json(result))
+
+    return {
+        "result": result,
+        "suggestions": suggestions
+    }
