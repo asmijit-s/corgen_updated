@@ -140,6 +140,11 @@ h2, h3, h4, h5 {
 .activity-type-generate[data-type="assignment"] { background-color: #3b82f6; }
 .activity-type-generate[data-type="document"] { background-color: #f59e0b; }
 .activity-type-generate[data-type="reading"] { background-color: #64748b; }
+.activity-type-generate[data-type="Lecture"] { background-color: #6b46c1; }
+.activity-type-generate[data-type="Quiz"] { background-color: #10b981; }
+.activity-type-generate[data-type="Assignment"] { background-color: #3b82f6; }
+.activity-type-generate[data-type="Document"] { background-color: #f59e0b; }
+.activity-type-generate[data-type="Reading"] { background-color: #64748b; }
 
 /* Responsive styles */
 @media (max-width: 768px) {

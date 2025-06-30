@@ -244,7 +244,7 @@ const ActivitiesPage = () => {
                       <div style={{display:'flex', justifyContent: 'space-between'}}>
                         <h3>{activity.activity_name}</h3>
                         <span className="activity-type-badge" style={{ backgroundColor: getactivity_typeColor(activity.activity_type) }}>
-                          {activity_types.find(t => t.value === activity.activity_type)?.label || 'Activity'}
+                          {activity_types.find(t => t.value === activity.activity_type || t.label === activity.activity_type)?.label || 'Activity'}
                         </span>
                       </div>
                       <div className="activity-actions">
