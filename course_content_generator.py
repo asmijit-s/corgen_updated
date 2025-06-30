@@ -108,12 +108,11 @@ class LectureInput(BaseModel):
     module_name: str
     submodule_name: str
     user_prompt: str
-    prev_activities_summary: Union[str, None] = None
-    notes_path: Union[str, None] = None
-    pdf_path: Union[str, None] = None
-    text_examples: Union[List[str], None] = None
-    duration_minutes: Union[int, None] = 10
-
+    prev_activities_summary: str
+    notes_path: Optional[str] = None
+    pdf_path: Optional[str] = None
+    text_examples: Optional[Union[str, List[str]]] = None
+    duration_minutes: Optional[int] = None
 
 class QuizInput(BaseModel):
     module_name: str
@@ -204,313 +203,41 @@ Summarize the following reading material in concise bullet points:
         "urlSummary": summarized_url
     }
 
-from fastapi import FastAPI, HTTPException
-from typing import List, Dict, Union
-from pydantic import BaseModel
-from google import genai
-import os
-import json
-from dotenv import load_dotenv
-import PyPDF2
-import requests
-from bs4 import BeautifulSoup
-import re
-
-# ------------------ Load API Key ------------------
-load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-app = FastAPI()
-
-# ------------------ Limits ------------------
-MAX_CHARS_PER_CONTEXT = 12000
-
-# ------------------ Extraction + Cleaning ------------------
-
-def extract_text_from_pdf(pdf_path):
-    try:
-        with open(pdf_path, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
-            return "\n".join(page.extract_text() or "" for page in reader.pages).strip()
-    except Exception as e:
-        raise ValueError(f"Failed to extract text from PDF: {e}")
-
-def extract_text_from_txt(txt_path):
-    try:
-        with open(txt_path, "r", encoding="utf-8") as f:
-            return f.read().strip()
-    except Exception as e:
-        raise ValueError(f"Failed to read text file: {e}")
-
-def scrape_text_from_url(url):
-    try:
-        response = requests.get(url, timeout=10)
-        soup = BeautifulSoup(response.content, "html.parser")
-        for script in soup(["script", "style"]):
-            script.extract()
-        return soup.get_text(separator="\n").strip()
-    except Exception as e:
-        raise ValueError(f"Failed to scrape URL '{url}': {e}")
-
-def clean_text(text):
-    if not text:
-        return ""
-    text = re.sub(r'\s+', ' ', text)
-    text = re.sub(r'https?://\S{80,}', '', text)
-    text = re.sub(r'<[^>]+>', '', text)
-    return text.strip()
-
-def truncate_text(text, max_chars=MAX_CHARS_PER_CONTEXT):
-    return text[:max_chars] if len(text) > max_chars else text
-
-def course_outline_to_text(outline):
-    if isinstance(outline, dict):
-        return "\n".join([f"- {k}: {v}" for k, v in outline.items()])
-    elif isinstance(outline, list):
-        return "\n".join([f"- {item['module']}: {item['description']}" for item in outline])
-    else:
-        return str(outline)
-
-# ------------------ Gemini API ------------------
-
-def call_gemini(prompt: str):
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-    )
-    raw_text = response.text.strip()
-    if raw_text.startswith("```"):
-        raw_text = raw_text.strip("```json").strip("```").strip()
-    return raw_text
-
-def summarize_text_with_gemini(text: str, label: str = "content"):
-    if not text.strip():
-        return ""
-    short_prompt = f"""
-You are a concise summarizer.
-
-Summarize the following {label} in simple, clear bullet points that cover key ideas only.
-Avoid examples or repetition. Keep it factual and brief.
-
-{text[:MAX_CHARS_PER_CONTEXT]}
-"""
-    try:
-        return call_gemini(short_prompt)
-    except Exception as e:
-        return f"(Failed to summarize {label})"
-
-# ------------------ Pydantic Models ------------------
-
-class ReadingInput(BaseModel):
-    course_outline: Union[dict, List[dict]]
-    module_name: str
-    submodule_name: str
-    user_prompt: str
-    previous_material_summary: str
-    notes_path: Union[str, None] = None
-    pdf_path: Union[str, None] = None
-    url: Union[str, None] = None
-
-class LectureInput(BaseModel):
-    course_outline: Union[dict, List[dict]]
-    module_name: str
-    submodule_name: str
-    user_prompt: str
-    prev_activities_summary: Union[str, None] = None
-    notes_path: Union[str, None] = None
-    pdf_path: Union[str, None] = None
-    text_examples: Union[List[str], None] = None
-    duration_minutes: Union[int, None] = 10
-
-# ------------------ Reading Material Generation ------------------
-
-def generate_reading_material(course_outline, module_name, submodule_name, user_prompt,
-                               previous_material_summary, notes_path=None, pdf_path=None, url=None):
-
-    notes_text = clean_text(extract_text_from_txt(notes_path)) if notes_path else ""
-    pdf_text = clean_text(extract_text_from_pdf(pdf_path)) if pdf_path else ""
-    url_text = clean_text(scrape_text_from_url(url)) if url else ""
-
-    summarized_notes = summarize_text_with_gemini(notes_text, label="lecture notes") if notes_text else ""
-    summarized_pdf = summarize_text_with_gemini(pdf_text, label="PDF reading") if pdf_text else ""
-    summarized_url = summarize_text_with_gemini(url_text, label="web article") if url_text else ""
-
-    combined_context = "\n\n".join([
-        f"--- Summary from Notes ---\n{summarized_notes}" if summarized_notes else "",
-        f"--- Summary from PDF ---\n{summarized_pdf}" if summarized_pdf else "",
-        f"--- Summary from URL ---\n{summarized_url}" if summarized_url else ""
-    ]).strip()
-
-    combined_context = truncate_text(combined_context)
-
-    prompt = f"""
-You are an expert educator.
-
-Your task is to create **reading material** for a specific submodule. Ensure that the content:
-- Aligns with the course outline
-- Avoids repeating earlier reading materials
-- Utilizes provided context from notes, PDFs, or reference websites
-- Adheres to the user's style or tone preferences
-
-### Input:
-
-Course Outline:
-{course_outline_to_text(course_outline)}
-
-Module: {module_name}
-Submodule: {submodule_name}
-User Prompt: {user_prompt}
-Previous Material Summary: {previous_material_summary}
-
-Context from Notes, PDF, or URL:
-{combined_context if combined_context else 'No additional context provided.'}
-
-### Output Format:
-Return a well-written **reading passage** in markdown format.
-Use beginner-friendly language, examples, and logical structure.
-"""
-    reading_material = call_gemini(prompt)
-
-    print("\n--- Reading Summaries ---")
-    print("Notes:", summarized_notes)
-    print("PDF:", summarized_pdf)
-    print("URL:", summarized_url)
-
-    return reading_material, {
-        "notesSummary": summarized_notes,
-        "pdfSummary": summarized_pdf,
-        "urlSummary": summarized_url
-    }
-
-# ------------------ Lecture Script Generation ------------------
-
 def generate_lecture_script(course_outline, module_name, submodule_name, user_prompt,
-                            prev_activities_summary=None,
-                            notes_path=None, pdf_path=None,
-                            text_examples: List[str] = None,
-                            duration_minutes: int = 10):
+                            prev_activities_summary, notes_path=None, pdf_path=None,
+                            text_examples=None, duration_minutes=None):
 
-    notes_text = clean_text(extract_text_from_txt(notes_path)) if notes_path else ""
-    pdf_text = clean_text(extract_text_from_pdf(pdf_path)) if pdf_path else ""
-    examples_text = "\n".join(text_examples or [])
-    
-    summarized_notes = summarize_text_with_gemini(notes_text, label="lecture notes") if notes_text else ""
-    summarized_pdf = summarize_text_with_gemini(pdf_text, label="PDF reference") if pdf_text else ""
-    summarized_examples = summarize_text_with_gemini(examples_text, label="example explanations") if examples_text else ""
-
-    combined_context = "\n\n".join([
-        f"--- Notes Summary ---\n{summarized_notes}" if summarized_notes else "",
-        f"--- PDF Summary ---\n{summarized_pdf}" if summarized_pdf else "",
-        f"--- Example Summary ---\n{summarized_examples}" if summarized_examples else "",
-        f"--- Previous Activities Summary ---\n{prev_activities_summary}" if prev_activities_summary else ""
-    ]).strip()
-
-    combined_context = truncate_text(combined_context)
+    notes_text = read_file(notes_path) if notes_path else ""
+    pdf_text = extract_text_from_pdf(pdf_path) if pdf_path else ""
+    examples_text = "\n".join(text_examples) if isinstance(text_examples, list) else (text_examples or "")
 
     prompt = f"""
 You are a skilled educator and video content designer.
-
-Create a **lecture script** for the following submodule of an AI course.
-
-- The tone should match the user's prompt
-- Include key explanations and smooth transitions
-- Make it suitable for a {duration_minutes}-minute video
-- Use examples and engaging analogies when possible
+Create a **lecture script** with:
+- Conversational tone, structure, and hooks
+- Speaker notes, explanation points
+- Duration: {duration_minutes or 'Unspecified'} minutes
 
 ### Input:
-
 Course Outline:
 {course_outline_to_text(course_outline)}
-
 Module: {module_name}
 Submodule: {submodule_name}
 User Prompt: {user_prompt}
-Duration: {duration_minutes} minutes
+Previous Summary:
+{prev_activities_summary}
 
-### Context:
-{combined_context or 'No prior material provided.'}
-
-### Output:
-Return the full lecture script in markdown format, with proper headings, speaker notes, and segments.
-"""
-    lecture_script = call_gemini(prompt)
-
-    summary_prompt = f"""
-You are a summarizer.
-
-Summarize the following lecture script:
-- List key concepts covered
-- Highlight learning objectives and takeaways
-- Mention if analogies/examples were used
-
-### Lecture Script:
-{truncate_text(lecture_script)}
+Notes:
+{notes_text or 'None'}
+PDF:
+{pdf_text or 'None'}
+Examples:
+{examples_text or 'None'}
 
 ### Output Format:
-Return in bullet points, grouped under "Key Concepts", "Learning Goals", and "Examples or Analogies".
+Markdown lecture script with speaker cues and segment summaries
 """
-
-    lecture_script_summary = call_gemini(summary_prompt)
-
-    print("\n--- Lecture Input Summaries ---")
-    print("Notes:", summarized_notes)
-    print("PDF:", summarized_pdf)
-    print("Examples:", summarized_examples)
-
-    print("\n--- Lecture Script Summary ---")
-    print(lecture_script_summary)
-
-    return lecture_script, {
-        "notesSummary": summarized_notes,
-        "pdfSummary": summarized_pdf,
-        "examplesSummary": summarized_examples
-    }, lecture_script_summary
-
-# ------------------ API Endpoints ------------------
-
-@app.post("/generate-reading-material")
-def api_reading(input: ReadingInput):
-    try:
-        result, summaries = generate_reading_material(
-            course_outline=input.course_outline,
-            module_name=input.module_name,
-            submodule_name=input.submodule_name,
-            user_prompt=input.user_prompt,
-            previous_material_summary=input.previous_material_summary,
-            notes_path=input.notes_path,
-            pdf_path=input.pdf_path,
-            url=input.url
-        )
-        return {
-            "readingMaterial": result,
-            "sourceSummaries": summaries
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/generate-lecture-script")
-def api_lecture(input: LectureInput):
-    try:
-        script, summaries, script_summary = generate_lecture_script(
-            course_outline=input.course_outline,
-            module_name=input.module_name,
-            submodule_name=input.submodule_name,
-            user_prompt=input.user_prompt,
-            prev_activities_summary=input.prev_activities_summary,
-            notes_path=input.notes_path,
-            pdf_path=input.pdf_path,
-            text_examples=input.text_examples,
-            duration_minutes=input.duration_minutes
-        )
-        return {
-            "lectureScript": script,
-            "sourceSummaries": summaries,
-            "lectureScriptSummary": script_summary
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+    return call_gemini(prompt)
 
 def generate_quiz(module_name: str, submodule_name: str, material_summary: str,
                   number_of_questions: int, quiz_type: str, total_score: int,
@@ -538,7 +265,7 @@ Return a **JSON array** where each item follows this schema:
 {{
   "question": "<question_text>",
   "options": ["<A>", "<B>", "<C>", "<D>"],  # Omit if T/F
-  "answer": "<correct_answer_id>",
+  "answer": "<correct_option>",  # "A", "B", "C", "D" or "True"/"False"
   "explanation": "<why this is the correct answer>"
 }}
 
