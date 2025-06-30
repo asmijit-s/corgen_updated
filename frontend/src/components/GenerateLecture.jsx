@@ -14,7 +14,7 @@ const LecturePage = () => {
   });
   const [courseData, setCourseData] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     const storedCourse = localStorage.getItem('generatedCourse');
     if (storedCourse) {
@@ -83,7 +83,7 @@ const LecturePage = () => {
 
   const handleSubmit = async (e) => {
   e.preventDefault();
-
+  setIsSubmitting(true);
   try {
     if (!courseData) throw new Error('Course data not loaded');
 
@@ -137,6 +137,8 @@ const LecturePage = () => {
   } catch (error) {
     console.error('Error saving content:', error);
     alert(error.message || 'Failed to save. Please try again.');
+  }finally{
+    setIsSubmitting(false);
   }
 };
 
@@ -242,8 +244,8 @@ const LecturePage = () => {
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="submit-button">
-              Create Lecture Script
+            <button type="submit" className="submit-button" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create Lecture Script'}
             </button>
           </div>
         </form>

@@ -15,7 +15,7 @@ const ReadingPage = () => {
   });
   const [courseData, setCourseData] = useState(null);
   const [loading, setLoading] = useState(true);
-
+   const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     const storedCourse = localStorage.getItem('generatedCourse');
     if (storedCourse) {
@@ -133,7 +133,7 @@ const ReadingPage = () => {
 //   };
     const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setIsSubmitting(true);
     try {
       if (!courseData) throw new Error('Course data not loaded');
 
@@ -188,6 +188,8 @@ const ReadingPage = () => {
     } catch (error) {
       console.error('Error saving reading material:', error);
       alert('Failed to save reading material. Please try again.');
+    }finally{
+        setIsSubmitting(false);
     }
   };
 
@@ -345,8 +347,8 @@ const ReadingPage = () => {
             </div>
 
           <div className="form-actions">
-            <button type="submit" className="submit-button">
-              Create Reading Material
+            <button type="submit" className="submit-button" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create Reading Material'}
             </button>
           </div>
         </form>
