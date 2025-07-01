@@ -106,7 +106,7 @@ const SubmodulesPage = () => {
       </div>
 
       <div className="module-description">{module.module_description}</div>
-      <div className="module-hours">Duration: <span>{module.module_hours}</span> hours</div>
+      <div className="module-hours">Duration: <span>{module.module_hours}</span></div>
 
       <div className="submodules-list">
         {module.submodules?.map((submodule, index) => (

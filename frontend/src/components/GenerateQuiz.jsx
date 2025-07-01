@@ -12,8 +12,7 @@ const GenerateQuiz = () => {
     instructions: '',
     quizType: 'mcq',
     grade: '',
-    numberOfQuestions: 1,
-    title: ''
+    numberOfQuestions: 1
   });
 
   useEffect(() => {
@@ -102,7 +101,6 @@ const GenerateQuiz = () => {
     });
 
     activity.content = {
-      title: form.title,
       instructions: form.instructions,
       grade: form.grade,
       quizType: form.quizType,
@@ -135,18 +133,6 @@ const GenerateQuiz = () => {
         <p className="quiz-generator-subtitle">Configure your quiz settings</p>
         
         <form onSubmit={handleSubmit} className="quiz-generator-form">
-          <div className="form-group">
-            <label className="form-label">Quiz Title</label>
-            <input
-              type="text"
-              name="title"
-              value={form.title}
-              onChange={handleChange}
-              placeholder="Enter quiz title"
-              required
-              className="form-input"
-            />
-          </div>
 
           <div className="form-group">
             <label className="form-label">Instructions</label>
@@ -177,12 +163,12 @@ const GenerateQuiz = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Grade Level</label>
+              <label className="form-label">Total Marks</label>
               <input
                 name="grade"
                 value={form.grade}
                 onChange={handleChange}
-                placeholder="e.g., Grade 6"
+                placeholder="Total marks for Quiz"
                 required
                 className="form-input"
               />

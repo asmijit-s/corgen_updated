@@ -138,7 +138,15 @@
   border-color: #99c2ff;
   box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
 }
-
+.duration-input{
+    width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+}
 /* Submit Button */
 .form-actions {
   margin-top: 2rem;
