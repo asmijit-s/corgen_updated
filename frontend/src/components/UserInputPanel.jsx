@@ -37,7 +37,7 @@ const ModificationSelector = ({
   console.log("Modification Prompt:", modificationText);
   isLoading = true;
   setError('');
-
+  console.log(fullValue)
   try {
     const response = await fetch('http://localhost:8000/course/redo', {
       method: 'POST',
@@ -110,9 +110,10 @@ const ModificationSelector = ({
         const activityIndex = match ? parseInt(match[3]) : null;
 
         const activity = parsed?.modules?.[moduleIndex]?.submodules?.[submoduleIndex]?.activities?.[activityIndex];
-
+        console.log("check 1");
         if (activity && activity.content) {
-          activity.content.readingMaterial = data.result.readingMaterial;
+          console.log(data.result.reading_material);
+          activity.content.readingMaterial = data.result.reading_material;
         }
       }
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './css/ModulesPage.css';
+import { v4 as uuidv4 } from 'uuid';
 
 const ModulesPage = () => {
   const navigate = useNavigate();
@@ -33,9 +34,9 @@ const ModulesPage = () => {
   const handleSave = () => {
     const updatedModules = [...modules];
     updatedModules[editingModule] = {
-      modeul_title: editForm.title,
-      modeul_description: editForm.description,
-      modeul_hours: parseInt(editForm.hours) || 0
+      module_title: editForm.title,
+      module_description: editForm.description,
+      module_hours: parseInt(editForm.hours) || 0
     };
     setModules(updatedModules);
     setEditingModule(null);
@@ -91,9 +92,10 @@ const ModulesPage = () => {
       return;
     }
     const moduleToAdd = {
-      modeul_title: newModule.title,
-      modeul_description: newModule.description,
-      modeul_hours: parseInt(newModule.hours) || 0
+      module_id: uuidv4(),
+      module_title: newModule.title,
+      module_description: newModule.description,
+      module_hours: parseInt(newModule.hours) || 0
     };
     const updatedModules = [...modules, moduleToAdd];
     setModules(updatedModules);

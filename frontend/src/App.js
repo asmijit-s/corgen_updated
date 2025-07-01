@@ -67,12 +67,18 @@ function generateOptionsFromLocalStorage(context = 'outline') {
       return rest;
     });
 
+    const submodDict = submodsWithoutActivities.reduce((acc, sub) => {
+      acc[sub.submodule_id] = sub;
+      return acc;
+    }, {});
+
+
     const options = submodsWithoutActivities.map((sub, idx) => ({
       label: sub.submodule_title,
       value: sub.submodule_id,
-      fullValue: submodsWithoutActivities
+      fullValue: submodDict
     }));
-      return [{ label: "All", value: "all", fullValue: submodsWithoutActivities }, ...options];
+      return [{ label: "All", value: "all", fullValue: submodDict }, ...options];
     }
   }
   if (context === 'activities') {
@@ -120,7 +126,10 @@ function generateOptionsFromLocalStorage(context = 'outline') {
       options.push({
         label: "Lecture Script",
         value: "lectureScript",
-        fullValue: activities[activityIndex].content.lectureScript
+        fullValue: {
+          lectureScript: activities[activityIndex].content.lectureScript,
+          summary: activities[activityIndex].content.summary
+        }
       });
     }
 
@@ -129,7 +138,10 @@ function generateOptionsFromLocalStorage(context = 'outline') {
       options.push({
         label: "Summary",
         value: "summary",
-        fullValue: activities[activityIndex].content.summary
+        fullValue: {
+          lectureScript: activities[activityIndex].content.lectureScript,
+          summary: activities[activityIndex].content.summary
+        }
       });
     }
 
@@ -170,7 +182,7 @@ if (context === 'reading') {
       return [{
         label: "Reading Material",
         value: "readingMaterial",
-        fullValue: reading
+        fullValue: {"readingMaterial": reading}
       }];
     }
   }

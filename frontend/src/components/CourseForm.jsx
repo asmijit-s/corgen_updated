@@ -5,22 +5,51 @@ import './css/CourseForm.css';
 
 const CourseForm = () => {
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    objectives: '',
-    outcomes: '',
-    audience: '',
-    prerequisites: '',
-    contactHours: '',
-    homeworkHours: '',
-    totalWeeks: '',
-    creditType: '',
-    manualCredits: ''
-  });
+  title: '',
+  description: '',
+  objectives: '',
+  outcomes: '',
+  audienceType: '',
+  grade: '',
+  board: '',
+  country: '',
+  degree: '',
+  prerequisites: '',
+  contactHours: '',
+  homeworkHours: '',
+  totalWeeks: '',
+  creditType: '',
+  manualCredits: ''
+});
+const degreeOptions = [
+  // Undergraduate
+  "Bachelor of Arts (BA)",
+  "Bachelor of Science (BSc)",
+  "Bachelor of Commerce (BCom)",
+  "Bachelor of Business Administration (BBA)",
+  "Bachelor of Engineering (BE)",
+  "Bachelor of Technology (BTech)",
+  "Bachelor of Computer Applications (BCA)",
+  "Bachelor of Education (BEd)",
+  "Bachelor of Pharmacy (BPharm)",
+
+  // Postgraduate
+  "Master of Arts (MA)",
+  "Master of Science (MSc)",
+  "Master of Commerce (MCom)",
+  "Master of Business Administration (MBA)",
+  "Master of Engineering (ME)",
+  "Master of Technology (MTech)",
+  "Master of Computer Applications (MCA)",
+  "Master of Pharmacy (MPharm)",
+  "Others"
+];
+
   const navigate = useNavigate();
   const [calculatedCredits, setCalculatedCredits] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isValid, setIsValid] = useState(false);
+  const [countryList, setCountryList] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,6 +75,31 @@ const CourseForm = () => {
     calculateCredits();
     validateForm();
   }, [formData]);
+  useEffect(() => {
+  const fetchCountries = async () => {
+    try {
+      const response = await fetch('https://restcountries.com/v3.1/independent?status=true');
+      const data = await response.json();
+
+      if (!Array.isArray(data)) {
+        console.error("Country API did not return an array:", data);
+        return;
+      }
+
+      const countries = data
+        .map(country => country.name?.common)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+
+      setCountryList(countries);
+    } catch (error) {
+      console.error("Error fetching countries:", error);
+    }
+  };
+
+  fetchCountries();
+}, []);
+
 
   const validateForm = () => {
     const requiredFields = [
@@ -60,7 +114,13 @@ const CourseForm = () => {
       }
       return formData[field].trim() !== '';
     });
-    
+    if (!formData.audienceType) return setIsValid(false);
+    if (!formData.country) return setIsValid(false);
+
+    // If school student, grade and board must be selected
+    if (formData.audienceType === 'school' && (!formData.grade || !formData.board)) return setIsValid(false);
+    // If UG/PG/professional, specialization must be present
+    if (['undergraduate', 'postgraduate', 'professional'].includes(formData.audienceType) && !formData.specialization) return setIsValid(false);
     setIsValid(allFieldsFilled);
   };
 
@@ -75,7 +135,11 @@ const CourseForm = () => {
       prerequisites: formData.prerequisites.split(',').map(p => p.trim()),
       description: formData.description,
       learning_objectives: formData.objectives.split('.').map(o => o.trim()).filter(o => o),
-      target_audience: formData.audience,
+      target_audience: formData.audienceType,
+      grade : formData.grade,
+      board : formData.board,
+      degree : formData.degree,
+      country: formData.country,
       duration: `${formData.totalWeeks} weeks`,
       credits: formData.creditType === "calculated" ? calculatedCredits : parseFloat(formData.manualCredits)
     };
@@ -165,17 +229,96 @@ localStorage.setItem("course-init", JSON.stringify(payload));
         </div>
         
         <div className="form-group">
-          <label className="form-label">Target Audience<span  style={{color:'red'}}>*</span></label>
-          <input
-            type="text"
-            className="form-input"
-            name="audience"
-            value={formData.audience}
-            onChange={handleChange}
-            placeholder="Enter target audience"
-            required
-          />
-        </div>
+        <label className="form-label">Type of Learner<span style={{color:'red'}}>*</span></label>
+        <select
+          className="form-input form-select"
+          name="audienceType"
+          value={formData.audienceType}
+          onChange={handleChange}
+          required
+        >
+          <option value="">Select learner type</option>
+          <option value="school">School Student</option>
+          <option value="undergraduate">Undergraduate</option>
+          <option value="postgraduate">Postgraduate</option>
+          <option value="professional">Working Professional</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      {formData.audienceType === 'school' && (
+  <>
+    <div className="form-group">
+      <label className="form-label">Grade/Class</label>
+      <select
+        className="form-input form-select"
+        name="grade"
+        value={formData.grade}
+        onChange={handleChange}
+      >
+        <option value="">Select grade/class</option>
+        {Array.from({ length: 12 }, (_, i) => (
+          <option key={i} value={`Class ${i + 1}`}>Class {i + 1}</option>
+        ))}
+      </select>
+    </div>
+
+    <div className="form-group">
+      <label className="form-label">Education Board</label>
+      <select
+        className="form-input form-select"
+        name="board"
+        value={formData.board}
+        onChange={handleChange}
+      >
+        <option value="">Select board</option>
+        <option value="CBSE">CBSE</option>
+        <option value="ICSE">ICSE</option>
+        <option value="IB">IB (International Baccalaureate)</option>
+        <option value="IGCSE">IGCSE</option>
+        <option value="State Board">State Board</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+  </>
+)}
+
+{['undergraduate', 'postgraduate', 'professional'].includes(formData.audienceType) && (
+  <>
+    <div className="form-group">
+  <label className="form-label">Degree<span style={{color:'red'}}>*</span></label>
+  <select
+    className="form-input form-select"
+    name="degree"
+    value={formData.degree}
+    onChange={handleChange}
+    required
+  >
+    <option value="">Select degree</option>
+    {degreeOptions.map((deg, i) => (
+      <option key={i} value={deg}>{deg}</option>
+    ))}
+  </select>
+</div>
+
+  </>
+)}
+
+<div className="form-group">
+  <label className="form-label">Country / Region<span style={{color:'red'}}>*</span></label>
+  <select
+    className="form-input form-select"
+    name="country"
+    value={formData.country}
+    onChange={handleChange}
+    required
+  >
+    <option value="">Select country</option>
+    {countryList.map((country, idx) => (
+      <option key={idx} value={country}>{country}</option>
+    ))}
+  </select>
+</div>
+
         
         <div className="form-group">
           <label className="form-label">Prerequisites to the Course<span  style={{color:'red'}}>*</span></label>

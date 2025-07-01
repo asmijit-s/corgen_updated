@@ -10,7 +10,8 @@ const LecturePage = () => {
     pdfs: [],
     documents: [],
     urls: '',
-    userGuideline: ''
+    userGuideline: '',
+    duration: ''
   });
   const [courseData, setCourseData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -105,7 +106,7 @@ const LecturePage = () => {
       notes_path: null,
       pdf_path: null,
       text_examples: null,
-      duration_minutes: null
+      duration_minutes: parseInt(formData.duration || '0', 10)
     };
 
     const firstUrl = formData.urls?.split(',')?.[0]?.trim();
@@ -127,8 +128,8 @@ const LecturePage = () => {
     const data = await response.json();
 
     // ✅ Save generated content
-    activity.content.lectureScript = data.lectureScript;
-    activity.content.summary = data.lectureScriptSummary||`# Summary\n\n(Add summary here or generate one using Gemini)`;
+    activity.content.lectureScript = data.lecture_script;
+    activity.content.summary = data.lecture_script_summary||`# Summary\n\n(Add summary here or generate one using Gemini)`;
 
     localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
     setCourseData(updatedCourse);
@@ -242,6 +243,19 @@ const LecturePage = () => {
               className="url-textarea"
             />
           </div>
+        <div className="form-section">
+            <label className="section-label">
+                Estimated Duration <span className="hint">(in minutes)</span>
+            </label>
+            <input
+                type="number"
+                min="1"
+                value={formData.duration}
+                onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
+                placeholder="Enter duration (e.g. 30)"
+                className="duration-input"
+            />
+        </div>
 
           <div className="form-actions">
             <button type="submit" className="submit-button" disabled={isSubmitting}>
