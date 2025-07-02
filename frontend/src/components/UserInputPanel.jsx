@@ -15,6 +15,7 @@ const ModificationSelector = ({
   const [selectedOption, setSelectedOption] = useState('');
   const [modificationText, setModificationText] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
   if (!selectedOption) {
@@ -25,7 +26,7 @@ const ModificationSelector = ({
     setError('Please describe your changes');
     return;
   }
-
+  setIsSubmitting(true);
   const selected = options.find(opt => opt.value === selectedOption);
   const fullValue = selected?.fullValue;
 
@@ -141,7 +142,9 @@ const ModificationSelector = ({
   } catch (err) {
     console.error(err);
     setError('Failed to submit changes. Please try again.');
-  }
+  } finally{
+        setIsSubmitting(false);
+    }
 };
 
   return (
@@ -180,14 +183,14 @@ const ModificationSelector = ({
         <button 
           className="build-btn" 
           onClick={handleSubmit}
-          disabled={isLoading || options.length === 0 || !selectedOption || !modificationText.trim()}
+          disabled={isLoading || options.length === 0 || !selectedOption || !modificationText.trim()|| isSubmitting}
         >
           {isLoading ? (
             <>
               <span className="spinner"></span> Processing...
             </>
           ) : (
-            submitButtonText
+            isSubmitting ? 'Regenerating...' : 'Re-generate'
           )}
         </button>
         <button 
