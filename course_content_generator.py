@@ -7,7 +7,6 @@ import requests
 from typing import List, Dict, Union, Optional, Type
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
-from fastapi import FastAPI
 from pydantic import BaseModel
 import PyPDF2
 from google import genai
@@ -125,6 +124,9 @@ class ReadingInput(BaseModel):
     course_outline: Union[dict, List[dict]]
     module_name: str
     submodule_name: str
+    activity_name: str
+    activity_description: str
+    activity_objective: str
     user_prompt: str
     previous_material_summary: str
     notes_path: Optional[str] = None
@@ -135,6 +137,9 @@ class LectureInput(BaseModel):
     course_outline: Union[dict, List[dict]]
     module_name: str
     submodule_name: str
+    activity_name: str
+    activity_description: str
+    activity_objective: str
     user_prompt: str
     prev_activities_summary: Union[str, None] = None
     notes_path: Union[str, None] = None
@@ -145,6 +150,9 @@ class LectureInput(BaseModel):
 class QuizInput(BaseModel):
     module_name: str
     submodule_name: str
+    activity_name: str
+    activity_description: str
+    activity_objective: str
     material_summary: str  # Lecture script or reading material summary of this submodule
     number_of_questions: int
     quiz_type: str  # "MCQ" or "T/F"
@@ -189,6 +197,9 @@ def generate_reading_material(
     course_outline,
     module_name,
     submodule_name,
+    activity_name,
+    activity_description,
+    activity_objective,
     user_prompt,
     previous_material_summary,
     notes_path=None,
@@ -227,9 +238,20 @@ Course Outline:
 Module: {module_name}
 Submodule: {submodule_name}
 User Prompt: {user_prompt}
+Activity Name: {activity_name}
+Activity Description: {activity_description}
+Activity Objective: {activity_objective}
 Previous Summary: {previous_material_summary}
 Context:
 {combined_context or 'No additional context provided.'}
+
+### INSTRUCTIONS:
+- Use clear headings and subheadings
+- Include explanations, examples, and code snippets
+- Use math where relevant
+- Suggest visuals (diagrams, charts) to enhance understanding
+- Ensure the material is strictly relevant to specified activity (based on name, description, and objective)
+- Avoid unnecessary repetition of previous material
 
 ### Output Format:
 Return a JSON object with the following fields:
@@ -280,6 +302,9 @@ def generate_lecture_script(
     course_outline,
     module_name,
     submodule_name,
+    activity_name,
+    activity_description,
+    activity_objective,
     user_prompt,
     prev_activities_summary=None,
     notes_path=None,
@@ -321,11 +346,19 @@ Course Outline:
 
 Module: {module_name}
 Submodule: {submodule_name}
+Activity Name: {activity_name}
+Activity Description: {activity_description}
+Activity Objective: {activity_objective}
 User Prompt: {user_prompt}
 Duration: {duration_minutes} minutes
 
 ### Context:
 {combined_context or 'No prior material provided.'}
+
+### INSTRUCTIONS:
+- Suggest visuals (diagrams, charts) to enhance understanding
+- Ensure the script is strictly relevant to specified activity (based on name, description, and objective)
+- Avoid unnecessary repetition of previous script material
 
 ### Output:
 Return a JSON object with the following fields:
@@ -333,10 +366,6 @@ Return a JSON object with the following fields:
 - source_summaries: A list of summaries for notes, PDF, and examples (omit if not available).
 - lecture_script_summary: A concise summary of the lecture script (see below).
 
-After generating the script, summarize it as follows:
-- List key concepts covered
-- Highlight learning objectives and takeaways
-- Mention if analogies/examples were used
 
 Return in bullet points, grouped under "Key Concepts", "Learning Goals", and "Examples or Analogies".
 """
@@ -357,11 +386,9 @@ Return in bullet points, grouped under "Key Concepts", "Learning Goals", and "Ex
         }, None
 
     lecture_script = response["lecture_script"]
-    lecture_script_summary = response.get("lecture_script_summary")
 
     # ✅ Auto-generate summary if not provided by LLM
-    if not lecture_script_summary:
-        summary_prompt = f"""
+    summary_prompt = f"""
 Summarize the following lecture script in bullet points grouped by:
 
 - Key Concepts
@@ -371,7 +398,7 @@ Summarize the following lecture script in bullet points grouped by:
 Lecture Script:
 {lecture_script}
 """
-        lecture_script_summary = call_gemini(summary_prompt) or ""
+    lecture_script_summary = call_gemini(summary_prompt) or ""
 
     return (
         lecture_script,
@@ -384,15 +411,22 @@ Lecture Script:
     )
 
 
-def generate_quiz(module_name: str, submodule_name: str, material_summary: str,
-                  number_of_questions: int, quiz_type: str, total_score: int,
-                  user_prompt: str) -> Optional[Dict]:
+def generate_quiz(module_name: str,
+                 submodule_name: str,
+                 activity_name: str,
+                 activity_description: str,
+                 activity_objective: str,
+                 material_summary: str,
+                 number_of_questions: int,
+                 quiz_type: str,
+                 total_score: int,
+                 user_prompt: str) -> Optional[Dict]:
 
     prompt = f"""
 You are a quiz designer for an educational AI system.
 
 ### Task:
-Generate a quiz for the **submodule** "{submodule_name}" under the module "{module_name}". Use the following content source:
+Generate a quiz for the **submodule** "{submodule_name}" under the module "{module_name}, having activity name {activity_name} which is all about {activity_description} to achieve the objective of {activity_objective}". Use the following content source:
 
 ### Material Summary:
 {material_summary}
@@ -404,6 +438,7 @@ Generate a quiz for the **submodule** "{submodule_name}" under the module "{modu
 - Follow this user instruction: {user_prompt}
 - Each question must include a short explanation of the correct answer.
 - Questions should be beginner-friendly and test conceptual clarity.
+- Ensure the questions are relevant to the submodule content and activity objective.
 
 ### Output Format:
 Return a **JSON array** where each item follows this schema:
