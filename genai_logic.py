@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Type
 import json
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel
 from course_content_generator import QuizOut, ReadingMaterialOut, LectureScriptOut
 load_dotenv()
 
