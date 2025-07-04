@@ -33,9 +33,18 @@ from course_content_generator import (
     ReadingMaterialOut,
     LectureScriptOut
 )
+from validator import (    
+    validate_content_with_keywords,
+    summarize_validation_report,
+    ValidationResult,
+    ValidationSummary,
+    ValidateContentInput,
+    ValidateContentOut
+)
 import json
 import logging
 from typing import Optional, Dict, Any
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -57,6 +66,11 @@ class RedoRequest(BaseModel):
     stage: Stage
     prev_content: Dict[str, Any]
     user_message: str
+
+class ValidateRequest(BaseModel):
+    content: str
+    activity_name: str
+    content_type: str  
 
 def as_json(obj: BaseModel | dict) -> str:
     return json.dumps(obj.model_dump() if isinstance(obj, BaseModel) else obj, indent=2)
@@ -214,30 +228,6 @@ def api_generate_quiz(input: QuizInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/generate-assignment")
-def api_generate_assignment(input: AssignmentInput):
-    try:
-        assignment = generate_assignment(
-            module_name=input.module_name,
-            submodule_name=input.submodule_name,
-            user_prompt=input.user_prompt,
-            all_submodule_summaries=input.all_submodule_summaries
-        )
-        return {"assignment": assignment}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/generate-mindmap")
-def api_generate_mindmap(input: MindmapInput):
-    try:
-        mindmap = generate_mindmap(
-            module_name=input.module_name,
-            submodule_summaries=input.submodule_summaries
-        )
-        return {"mindmap": mindmap}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.post("/redo")
 def redo_any_stage(request: RedoRequest):
     logger.info(f"Redoing stage: {request.stage}")
@@ -271,3 +261,24 @@ def redo_any_stage(request: RedoRequest):
         "result": result,
         "suggestions": suggestions
     }
+
+@router.post("/validate-content", response_model=ValidateContentOut)
+def api_validate_content(input: ValidateContentInput):
+    try:
+        detailed_report = validate_content_with_keywords(
+            content=input.content,
+            activity_name=input.activity_name,
+            activity_type=input.activity_type
+        )
+        validation_results = [
+            ValidationResult.model_validate(item) if not isinstance(item, ValidationResult) else item
+            for item in detailed_report
+        ]
+        summary = summarize_validation_report(validation_results)
+
+        return {
+            "summary": summary,
+            "detailedReport": detailed_report
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
