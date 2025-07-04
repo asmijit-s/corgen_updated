@@ -156,6 +156,9 @@ const ReadingPage = () => {
       module_name: module.module_title || module.moduleName,
       submodule_name: submodule.submodule_title || submodule.submoduleName,
       user_prompt: formData.userGuideline || '',
+      activity_name: activity.activity_name,
+      activity_description: activity.activity_description,
+      activity_objective: activity.activity_objective,
       previous_material_summary: '', // could be filled if editing
       url: formData.urls?.split(',')[0]?.trim() || null,
       pdf_path: null,           // Skipping file handling unless backend supports uploads
@@ -185,6 +188,7 @@ const ReadingPage = () => {
       localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
       setCourseData(updatedCourse); // 👈 ensures latest data in state
       setShowForm(false);
+      window.location.reload();
     } catch (error) {
       console.error('Error saving reading material:', error);
       alert('Failed to save reading material. Please try again.');

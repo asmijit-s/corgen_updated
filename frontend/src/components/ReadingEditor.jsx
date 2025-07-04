@@ -56,7 +56,8 @@ const ReadingEditor = ({ generatingcontext }) => {
   const [viewMode, setViewMode] = useState("wysiwyg"); // 'wysiwyg' or 'markdown'
   const [markdownContent, setMarkdownContent] = useState("");
   const { moduleId, submoduleId, activity_idx } = useParams();
-  const defaultContent = `Welcome, future Data Scientists and Machine Learning enthusiasts!\n\nToday, we're diving into a fascinating area of Supervised Learning: **Decision Trees**. You've already mastered the basics...`;
+  const defaultContent = `Nothing was generated please try again lol`;
+
     const getCurrentActivity = () => {
         const raw = localStorage.getItem("generatedCourse");
         if (!raw) return null;

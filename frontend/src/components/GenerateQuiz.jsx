@@ -59,6 +59,9 @@ const GenerateQuiz = () => {
       module_name: module.module_title || module.moduleName,
       submodule_name: submodule.submodule_title || submodule.submoduleName,
       material_summary: "", // optional, for now
+      activity_name: activity.activity_name,
+      activity_description: activity.activity_description,
+      activity_objective: activity.activity_objective,
       number_of_questions: parseInt(form.numberOfQuestions),
       quiz_type: form.quizType,
       total_score: parseInt(form.numberOfQuestions), // 1 mark per question by default
@@ -109,6 +112,7 @@ const GenerateQuiz = () => {
 
     localStorage.setItem('generatedCourse', JSON.stringify(courseData));
     navigate(`/quiz_editor/${moduleIdx}/${submoduleIdx}/${activityIdx}`);
+    window.location.reload();
   } catch (error) {
     console.error('Error generating quiz:', error);
     alert(error.message || 'Failed to generate quiz.');
