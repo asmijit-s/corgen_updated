@@ -339,6 +339,7 @@ Create a **lecture script** for the following submodule of an AI course.
 - Make it suitable for a {duration_minutes}-minute video
 - The content should strictly adhere to the duration and activity objective
 - Use examples and engaging analogies when possible
+- **MAKE SURE THE TIMESTAMPS ARE PROPERLY ALIGNED WITH THE CONTENT**
 
 ### Input:
 
