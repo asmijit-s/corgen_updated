@@ -222,8 +222,9 @@ def api_generate_quiz(input: QuizInput):
             user_prompt=input.user_prompt
         )
         # If generate_quiz now returns a dict with a "quizzes" key, extract it
-        if isinstance(quiz_list, dict) and "quizzes" in quiz_list:
-            quiz_list = quiz_list["quizzes"]
+        if isinstance(quiz_list, dict) and "questions" in quiz_list:
+            quiz_list = quiz_list["questions"]
+
         return quiz_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -102,27 +102,36 @@ const degreeOptions = [
 
 
   const validateForm = () => {
-    const requiredFields = [
-      'title', 'description', 'objectives', 'outcomes',
-      'audience', 'prerequisites', 'contactHours',
-      'homeworkHours', 'totalWeeks', 'creditType'
-    ];
-    
-    const allFieldsFilled = requiredFields.every(field => {
-      if (field === 'creditType' && formData[field] === 'manual') {
-        return formData.manualCredits.trim() !== '';
-      }
-      return formData[field].trim() !== '';
-    });
-    if (!formData.audienceType) return setIsValid(false);
-    if (!formData.country) return setIsValid(false);
+  const requiredFields = [
+    'title', 'description', 'objectives', 'outcomes',
+    'audienceType', 'prerequisites', 'contactHours',
+    'homeworkHours', 'totalWeeks', 'creditType'
+  ];
 
-    // If school student, grade and board must be selected
-    if (formData.audienceType === 'school' && (!formData.grade || !formData.board)) return setIsValid(false);
-    // If UG/PG/professional, specialization must be present
-    if (['undergraduate', 'postgraduate', 'professional'].includes(formData.audienceType) && !formData.specialization) return setIsValid(false);
-    setIsValid(allFieldsFilled);
-  };
+  const allFieldsFilled = requiredFields.every(field => {
+    if (field === 'creditType' && formData[field] === 'manual') {
+      return (formData.manualCredits || '').trim() !== '';
+    }
+    return (formData[field] || '').trim() !== '';
+  });
+
+  if (!formData.audienceType) return setIsValid(false);
+  if (!formData.country) return setIsValid(false);
+
+  // School: grade and board must be present
+  if (
+    formData.audienceType === 'school' &&
+    (!formData.grade || !formData.board)
+  ) return setIsValid(false);
+
+  // UG/PG/Professional: degree must be present
+  if (
+    ['undergraduate', 'postgraduate', 'professional'].includes(formData.audienceType) &&
+    !formData.degree
+  ) return setIsValid(false);
+
+  setIsValid(allFieldsFilled);
+};
 
  const handleSubmit = async (e) => {
   e.preventDefault();

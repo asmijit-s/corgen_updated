@@ -105,8 +105,11 @@ const LecturePage = () => {
       prev_activities_summary: '', // can be added later
       notes_path: null,
       pdf_path: null,
+      activity_name: activity.activity_name,
+      activity_description: activity.activity_description,
+      activity_objective: activity.activity_objective,
       text_examples: null,
-      duration_minutes: parseInt(formData.duration || '0', 10)
+      duration_minutes: parseInt(formData.duration || '5', 10)
     };
 
     const firstUrl = formData.urls?.split(',')?.[0]?.trim();
@@ -134,7 +137,7 @@ const LecturePage = () => {
     localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
     setCourseData(updatedCourse);
     setShowForm(false);
-
+    window.location.reload();
   } catch (error) {
     console.error('Error saving content:', error);
     alert(error.message || 'Failed to save. Please try again.');

@@ -93,15 +93,8 @@ const ModificationSelector = ({
         const activity = parsed?.modules?.[moduleIndex]?.submodules?.[submoduleIndex]?.activities?.[activityIndex];
 
         if (activity && activity.content) {
-          if (selected.value === 'lectureScript') {
-            activity.content.lectureScript = data.result.lectureScript;
-          } else if (selected.value === 'summary') {
-            activity.content.summary = data.result.summary;
-          } else if (selected.value === 'all') {
-            // Overwrite both if 'All' was selected
-            activity.content.lectureScript = data.result.lectureScript;
-            activity.content.summary = data.result.summary;
-          }
+          activity.content.lectureScript = data.result.lecture_script;
+          activity.content.summary = data.result.summary;
         }
       }else if (stage === 'reading') {
         const path = window.location.pathname;
@@ -135,7 +128,7 @@ const ModificationSelector = ({
       localStorage.setItem("generatedCourse", JSON.stringify(parsed));
       window.location.reload();
     }
-
+    window.location.reload();
     // Clear inputs after success
     setSelectedOption('');
     setModificationText('');
