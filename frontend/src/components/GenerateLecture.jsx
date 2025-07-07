@@ -133,6 +133,22 @@ const LecturePage = () => {
     // ✅ Save generated content
     activity.content.lectureScript = data.lecture_script;
     activity.content.summary = data.lecture_script_summary||`# Summary\n\n(Add summary here or generate one using Gemini)`;
+    const validationResponse = await fetch('http://localhost:8000/course/validate-content', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    content: data.lecture_script,
+    activity_name: activity.activity_name,
+    activity_type: "lecture"
+  })
+});
+if (validationResponse.ok) {
+  const validationData = await validationResponse.json();
+  activity.content.validation = validationData;
+  localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
+} else {
+  console.warn("Validation failed:", await validationResponse.text());
+}
 
     localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
     setCourseData(updatedCourse);

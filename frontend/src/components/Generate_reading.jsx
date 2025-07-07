@@ -132,40 +132,38 @@ const ReadingPage = () => {
 //     }
 //   };
     const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      if (!courseData) throw new Error('Course data not loaded');
+  e.preventDefault();
+  setIsSubmitting(true);
+  try {
+    if (!courseData) throw new Error('Course data not loaded');
 
-      const updatedCourse = JSON.parse(JSON.stringify(courseData));
+    const updatedCourse = JSON.parse(JSON.stringify(courseData));
+    const module = updatedCourse.modules?.[moduleId];
+    if (!module) throw new Error('Invalid module index');
 
-      const module = updatedCourse.modules?.[moduleId];
-      if (!module) throw new Error('Invalid module index');
-        console.log(module);
-      const submodule = module.submodules?.[submoduleId];
-      if (!submodule) throw new Error('Invalid submodule index');
-        console.log(submodule);
-        console.log(activity_idx);
-      const activity = submodule.activities?.[activity_idx];
-      if (!activity) throw new Error('Invalid activity index');
-        console.log(activity);
-      if (!activity.content) activity.content = {};
+    const submodule = module.submodules?.[submoduleId];
+    if (!submodule) throw new Error('Invalid submodule index');
 
-      const requestBody = {
-      course_outline: courseData.courseOutline || {}, // Adjust if your outline is stored elsewhere
+    const activity = submodule.activities?.[activity_idx];
+    if (!activity) throw new Error('Invalid activity index');
+
+    if (!activity.content) activity.content = {};
+
+    const requestBody = {
+      course_outline: courseData.courseOutline || {},
       module_name: module.module_title || module.moduleName,
       submodule_name: submodule.submodule_title || submodule.submoduleName,
       user_prompt: formData.userGuideline || '',
       activity_name: activity.activity_name,
       activity_description: activity.activity_description,
       activity_objective: activity.activity_objective,
-      previous_material_summary: '', // could be filled if editing
+      previous_material_summary: '',
       url: formData.urls?.split(',')[0]?.trim() || null,
-      pdf_path: null,           // Skipping file handling unless backend supports uploads
+      pdf_path: null,
       notes_path: null
     };
 
-    // 🔄 API call to generate reading material
+    // 🔄 Generate reading material
     const response = await fetch('http://localhost:8000/course/generate-reading-material', {
       method: 'POST',
       headers: {
@@ -181,21 +179,39 @@ const ReadingPage = () => {
 
     const data = await response.json();
     const readingMaterial = data.reading_material;
-    console.log(data.reading_material);
-    // ✅ Save returned content into localStorage
     activity.content.readingMaterial = readingMaterial;
 
-      localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
-      setCourseData(updatedCourse); // 👈 ensures latest data in state
-      setShowForm(false);
-      window.location.reload();
-    } catch (error) {
-      console.error('Error saving reading material:', error);
-      alert('Failed to save reading material. Please try again.');
-    }finally{
-        setIsSubmitting(false);
+    // 🔍 Validate content after saving
+    const validationResponse = await fetch('http://localhost:8000/course/validate-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: readingMaterial,
+        activity_name: activity.activity_name,
+        activity_type: "reading"
+      })
+    });
+
+    if (validationResponse.ok) {
+      const validationData = await validationResponse.json();
+      activity.content.validation = validationData;
+    } else {
+      console.warn("Validation failed:", await validationResponse.text());
     }
-  };
+
+    localStorage.setItem('generatedCourse', JSON.stringify(updatedCourse));
+    setCourseData(updatedCourse);
+    setShowForm(false);
+    window.location.reload();
+  } catch (error) {
+    console.error('Error saving reading material:', error);
+    alert('Failed to save reading material. Please try again.');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
 
   if (loading) {
     return <div className="loading-container">Loading...</div>;
