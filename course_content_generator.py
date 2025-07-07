@@ -124,6 +124,7 @@ class ReadingInput(BaseModel):
     course_outline: Union[dict, List[dict]]
     module_name: str
     submodule_name: str
+    activity_id: str  
     activity_name: str
     activity_description: str
     activity_objective: str
@@ -137,6 +138,7 @@ class LectureInput(BaseModel):
     course_outline: Union[dict, List[dict]]
     module_name: str
     submodule_name: str
+    activity_id: str
     activity_name: str
     activity_description: str
     activity_objective: str
@@ -150,6 +152,7 @@ class LectureInput(BaseModel):
 class QuizInput(BaseModel):
     module_name: str
     submodule_name: str
+    activity_id: str
     activity_name: str
     activity_description: str
     activity_objective: str

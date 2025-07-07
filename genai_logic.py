@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Type
 import json
+import uuid
 from pydantic import BaseModel
 from course_content_generator import QuizOut, ReadingMaterialOut, LectureScriptOut
 load_dotenv()
@@ -45,14 +46,19 @@ SchemaDict["reading"]=ReadingMaterialOut
 SchemaDict["lecture"]=LectureScriptOut
 ################################# OUTLINE GENERATION ######################################################
 
+class TargetAudience(BaseModel):
+    demographic: str
+    board: str
+    specialization: str
+    country: Optional[str] = None
 
 class CourseInit(BaseModel):
-    course_id: str
+    course_id: Optional[str] = None  # Optional, will be generated
     title: str
     prerequisites: List[str]
     description: str
     learning_objectives: List[str]
-    target_audience: str
+    target_audience: TargetAudience
     duration: str
     credits: float
     
@@ -77,12 +83,16 @@ INPUTS:
 - Prerequisites: {course.prerequisites}
 - Description: {course.description}
 - Learning Objective: {', '.join(course.learning_objectives)}
-- Target Audience: {course.target_audience}
+- Target Audience:
+  - Learner Type: {course.target_audience.demographic}
+  - Education Board: {course.target_audience.board}
+  - Specialization: {course.target_audience.specialization}
+  - Country: {course.target_audience.country}
 - Duration: {course.duration}
 - Credits: {course.credits}
 
 Strictly return the output in the following format with clearly labeled sections:
-- Course ID:
+- Course ID: {course.course_id}
 - Title:
 - Prerequisites:
 - Description (Elaborate based on input):
@@ -105,6 +115,12 @@ INSTRUCTIONS FOR GENERATION:
 3) Ensure the description aligns with the learning objectives and outcomes. Avoid adding content not implied or supported by the inputs.
 4) The learning outcomes and description should be appropriate and relevant to the target audience.
 5) Strictly adhere to the output list format specified. The output should contain learning_outcomes NOT learning_objectives.
+6) Customize the content based on the target audience:
+   - For school students, use simplified concepts and age-appropriate vocabulary.
+   - For undergraduates and postgraduates, use academically appropriate structure and discipline-specific terminology.
+   - Consider the Education Board (e.g., CBSE, IB) to tailor rigor, format, or scope if relevant.
+   - Incorporate specialization to keep the course relevant to the learner's domain (e.g., use computing-related examples for CS students).
+7) Align learning outcomes with both the learner level and specialization.
 
 Output must strictly match the JSON schema provided. 
 Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
@@ -145,7 +161,6 @@ You are a course design assistant helping Subject Matter Experts (SMEs) design h
 - Consider audience level and prerequisites.
 
 ### Each module should include:
-- module_id: a unique identifier (e.g., "module_1", "module_2")
 - module_title: a clear, focused name
 - module_description: detailed overview of content, learning goals, and practical skills
 - module_hours: realistic duration (e.g., "6 hours", "10 hours")
@@ -196,7 +211,6 @@ def generate_submodules(module: Module) -> Optional[dict]:
     - Each submodule should have a clear title and detailed description of the content, learning goals, and practical skills.
 
     ### Submodule Details:
-    - Submodule ID: A unique identifier for each submodule (e.g., "submodule_1", "submodule_2")
     - Submodule Title: A clear, focused title for each submodule
     - Submodule Description: A detailed overview of the content, learning goals, and practical skills for each submodule
 
@@ -233,6 +247,7 @@ Only return the raw structured object.
 
 ################################# ACTIVITY GENERATION ######################################################
 class Activity(BaseModel):
+    activity_id: str 
     activity_name: str
     activity_description: str
     activity_objective: str
