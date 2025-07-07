@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ValidationError
 from typing import List, Optional, Dict, TypeVar, Type
 from pymongo import MongoClient
-from bson import ObjectId, json_util
 import uuid
 from datetime import datetime, timezone
 
@@ -68,6 +67,8 @@ collection_modules = db["modules"]
 collection_submodules = db["submodules"]
 collection_activities = db["activities"]
 collection_content= db["content"] 
+collection_latest_versions = db["latest_versions"]
+collection_version_tags = db["version_tags"]
 # In-memory course state for tracking previous stages
 course_state = {}
 
@@ -107,6 +108,22 @@ def parse_result(result_str: str | None, model: type[T]) -> T:
     except ValidationError as ve:
         logger.exception("Parsed result failed schema validation.")
         raise HTTPException(status_code=500, detail=f"Schema validation failed: {ve.errors()}")
+def auto_tag_version(entity_id: str, version_id: str, stage: Stage, prefix: str):
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    tag = f"{prefix}-{timestamp}"
+
+    try:
+        collection_version_tags.insert_one({
+            "entity_id": entity_id,
+            "stage": stage.value,
+            "tag": tag,
+            "version_id": version_id,
+            "timestamp": datetime.now(timezone.utc)
+        })
+        logger.info(f"Auto-tagged version {version_id} as '{tag}'")
+    except Exception as e:
+        logger.warning(f"Auto-tagging failed for {version_id}: {e}")
+
 
 @router.post("/generate/outline")
 def generate_outline(course: CourseInit):
@@ -116,6 +133,7 @@ def generate_outline(course: CourseInit):
     version_id = str(uuid.uuid4())
     course_id = str(uuid.uuid4())
     course.course_id = course_id  # Attach to model
+    auto_tag_version(course_id, version_id, Stage.outline, "initial-outline")
 
     # Step 2: Dump course input (with nested fields) for storage
     course_dict = course.model_dump(mode="python")
@@ -206,7 +224,7 @@ def generate_module(course_outline: CourseOutline):
     for module in result.modules:
         module.module_id = str(uuid.uuid4())
     module_ids = [m.module_id for m in result.modules]
-
+    auto_tag_version(course_outline.course_id, version_id, Stage.module, "initial-module")
     # Step 4: Store in MongoDB (collection_modules)
     module_record = {
         "course_id": course_outline.course_id,
@@ -253,7 +271,7 @@ def generate_submodule(module: Module):
     for submodule in result.submodules:
         submodule.submodule_id = str(uuid.uuid4())
         submodule_ids.append(submodule.submodule_id)
-
+    auto_tag_version(module.module_id, version_id, Stage.submodule, "initial-submodule")
     submodule_record = {
         "module_id": module.module_id,
         "version_id": version_id,
@@ -301,7 +319,7 @@ def generate_activity(payload: ActivityRequest):
     for activity in result.activities:
         activity.activity_id = str(uuid.uuid4())
         activity_ids.append(activity.activity_id)
-
+    auto_tag_version(payload.submodule_id, version_id, Stage.activity, "initial-activity")
     activity_record = {
         "submodule_id": payload.submodule_id,
         "version_id": version_id,
@@ -362,7 +380,7 @@ def api_generate_reading(input: ReadingInput):
             "stage": "reading"
         }
 
-        # Step 4: Store in MongoDB
+        auto_tag_version(input.activity_id, version_id, Stage.reading, "initial-reading")
         collection_content.insert_one(reading_record)
 
         logger.info(f"Stored reading material for activity: {input.activity_name} with version_id: {version_id}")
@@ -399,7 +417,7 @@ def api_lecture(input: LectureInput):
         version_id = str(uuid.uuid4())
         script_text = script.get("lecture_script") if isinstance(script, dict) else script or ""
 
-        # Step 3: Prepare Mongo record
+        auto_tag_version(input.activity_id, version_id, Stage.lecture, "initial-lecture")
         lecture_record = {
             "activity_id": input.activity_id,
             "activity_name": input.activity_name,
@@ -461,7 +479,7 @@ def api_generate_quiz(input: QuizInput):
         # Step 3: Assign version ID
         version_id = str(uuid.uuid4())
 
-        # Step 4: Prepare record
+        auto_tag_version(input.activity_id, version_id, Stage.quiz, "initial-quiz")
         quiz_record = {
             "activity_name": input.activity_name,
             "activity_description": input.activity_description,
@@ -519,7 +537,10 @@ def redo_any_stage(request: RedoRequest):
     previous_version_id = found_prev.get("version_id")
     timestamp = datetime.now(timezone.utc)
 
-    # Step 4: Save to MongoDB with version chain
+    identifier = (found_prev.get("course_id") or found_prev.get("module_id") or found_prev.get("submodule_id") or found_prev.get("activity_id"))
+    if identifier is None:
+        raise HTTPException(status_code=400, detail="No valid identifier found for version tagging")
+    auto_tag_version(str(identifier), version_id, request.stage, f"redo-{request.stage.value}")
     try:
         record = {
             "version_id": version_id,
@@ -630,4 +651,66 @@ def api_validate_content(input: ValidateContentInput):
             "detailedReport": detailed_report
         }
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+# Add this near the top with other Mongo collections
+collection_latest_versions = db["latest_versions"]
+
+
+@router.post("/rollback")
+def rollback_version(stage: Stage, version_id: str):
+    try:
+        # Step 1: Identify the correct collection
+        collection_map = {
+            Stage.outline: collection_outline,
+            Stage.module: collection_modules,
+            Stage.submodule: collection_submodules,
+            Stage.activity: collection_activities,
+            Stage.reading: collection_content,
+            Stage.lecture: collection_content,
+            Stage.quiz: collection_content,
+        }
+        target_collection = collection_map.get(stage)
+        if target_collection is None:
+            raise HTTPException(status_code=400, detail="Unsupported stage for rollback")
+
+        # Step 2: Fetch the target version
+        old_version = target_collection.find_one({"version_id": version_id})
+        if not old_version:
+            raise HTTPException(status_code=404, detail="Version not found")
+
+        # Step 3: Prepare a new version document
+        new_version_id = str(uuid.uuid4())
+        old_version["previous_version_id"] = version_id
+        old_version["version_id"] = new_version_id
+        old_version["timestamp"] = datetime.now(timezone.utc)
+        old_version["copied_from_version_id"] = version_id
+        del old_version["_id"]  # Let Mongo assign a new ID
+
+        identifier = (
+            old_version.get("course_id") or
+            old_version.get("module_id") or
+            old_version.get("submodule_id") or
+            old_version.get("activity_id")
+        )
+
+        auto_tag_version(identifier, new_version_id, stage, f"rollback-{stage.value}")
+        target_collection.insert_one(old_version)
+
+        # Step 5: Update latest version pointer
+        collection_latest_versions.update_one(
+            {"entity_id": identifier, "stage": stage.value},
+            {"$set": {"latest_version_id": new_version_id}},
+            upsert=True
+        )
+
+        logger.info(f"Rollback complete: {stage.value} reverted to version {version_id} as new {new_version_id}")
+
+        return {
+            "message": f"Rollback successful. New version_id: {new_version_id}",
+            "new_version_id": new_version_id
+        }
+
+    except Exception as e:
+        logger.exception("Failed to rollback version")
         raise HTTPException(status_code=500, detail=str(e))
