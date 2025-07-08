@@ -142,12 +142,14 @@ if (formData.audienceType === 'school' && !formData.grade) return setIsValid(fal
       prerequisites: formData.prerequisites.split(',').map(p => p.trim()),
       description: formData.description,
       learning_objectives: formData.objectives.split('.').map(o => o.trim()).filter(o => o),
-      target_audience: formData.audienceType,
-      grade : formData.grade,
-      degree : formData.degree,
-      country: formData.country,
-      math_level: formData.mathLevel || null,
-      english_level: formData.englishLevel || null,
+      target_audience: {
+        audienceType: formData.audienceType,
+        grade : formData.grade,
+        specialization : formData.degree,
+        country: formData.country,
+        maths_level: formData.mathLevel || null,
+        english_level: formData.englishLevel || null
+      },
       duration: `${formData.totalWeeks} weeks`,
       credits: formData.creditType === "calculated" ? calculatedCredits : parseFloat(formData.manualCredits)
     };
