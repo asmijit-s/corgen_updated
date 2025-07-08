@@ -33,14 +33,14 @@ from course_content_generator import (
     ReadingMaterialOut,
     LectureScriptOut
 )
-from validator import (    
-    validate_content_with_keywords,
-    summarize_validation_report,
-    ValidationResult,
-    ValidationSummary,
-    ValidateContentInput,
-    ValidateContentOut
-)
+# from validator import (    
+#     validate_content_with_keywords,
+#     summarize_validation_report,
+#     ValidationResult,
+#     ValidationSummary,
+#     ValidateContentInput,
+#     ValidateContentOut
+# )
 import json
 import logging
 from typing import Optional, Dict, Any
@@ -93,16 +93,40 @@ def parse_result(result_str: str | None, model: type[BaseModel]) -> BaseModel:
 @router.post("/generate/outline")
 def generate_outline(course: CourseInit):
     logger.info("Generating course outline...")
-    result_str = generate_course_outline(course)
-    if isinstance(result_str, dict):
-        result_str = json.dumps(result_str)
-    result = parse_result(result_str, CourseOutline)
-    course_state[course.course_id] = {
-        "course_init": course.model_dump(),
-        "outline": result
-    }
+
+    # Step 2: Dump course input (with nested fields) for storage
+    course_dict = course.model_dump(mode="python")
+
+    # Optional: Flatten audience fields for filtering in MongoDB
+    audience = course.target_audience
+    course_dict.update({
+        "audience_type": audience.demographic,
+        "audience_board": audience.board,
+        "audience_specialization": audience.specialization,
+        "audience_country": audience.country
+    })
+
+    # Step 3: Generate the outline from the LLM
+    result_data = generate_course_outline(course)
+
+    if result_data is None or not isinstance(result_data, dict):
+        return {"error": "Failed to generate outline. Please try again."}
+
+    try:
+        result_str = json.dumps(result_data)
+        result = parse_result(result_str, CourseOutline)
+    except Exception as e:
+        logger.exception("Failed to parse LLM response into CourseOutline")
+        return {"error": "LLM response could not be parsed."}
+
+    # Step 6: Get suggestions for next stage
     suggestions = get_stage_suggestions(Stage.outline, as_json(result))
-    return {"result": result, "suggestions": suggestions}
+
+    # Final Response
+    return {
+        "result": result,
+        "suggestions": suggestions
+    }
 
 
 @router.post("/generate/modules")
@@ -263,23 +287,23 @@ def redo_any_stage(request: RedoRequest):
         "suggestions": suggestions
     }
 
-@router.post("/validate-content", response_model=ValidateContentOut)
-def api_validate_content(input: ValidateContentInput):
-    try:
-        detailed_report = validate_content_with_keywords(
-            content=input.content,
-            activity_name=input.activity_name,
-            activity_type=input.activity_type
-        )
-        validation_results = [
-            ValidationResult.model_validate(item) if not isinstance(item, ValidationResult) else item
-            for item in detailed_report
-        ]
-        summary = summarize_validation_report(validation_results)
+# @router.post("/validate-content", response_model=ValidateContentOut)
+# def api_validate_content(input: ValidateContentInput):
+#     try:
+#         detailed_report = validate_content_with_keywords(
+#             content=input.content,
+#             activity_name=input.activity_name,
+#             activity_type=input.activity_type
+#         )
+#         validation_results = [
+#             ValidationResult.model_validate(item) if not isinstance(item, ValidationResult) else item
+#             for item in detailed_report
+#         ]
+#         summary = summarize_validation_report(validation_results)
 
-        return {
-            "summary": summary,
-            "detailedReport": detailed_report
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#         return {
+#             "summary": summary,
+#             "detailedReport": detailed_report
+#         }
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))

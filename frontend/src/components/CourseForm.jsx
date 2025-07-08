@@ -11,9 +11,10 @@ const CourseForm = () => {
   outcomes: '',
   audienceType: '',
   grade: '',
-  board: '',
   country: '',
   degree: '',
+  mathLevel: '',
+  englishLevel: '',
   prerequisites: '',
   contactHours: '',
   homeworkHours: '',
@@ -118,11 +119,8 @@ const degreeOptions = [
   if (!formData.audienceType) return setIsValid(false);
   if (!formData.country) return setIsValid(false);
 
-  // School: grade and board must be present
-  if (
-    formData.audienceType === 'school' &&
-    (!formData.grade || !formData.board)
-  ) return setIsValid(false);
+  // If School: grade must be present
+if (formData.audienceType === 'school' && !formData.grade) return setIsValid(false);
 
   // UG/PG/Professional: degree must be present
   if (
@@ -146,9 +144,10 @@ const degreeOptions = [
       learning_objectives: formData.objectives.split('.').map(o => o.trim()).filter(o => o),
       target_audience: formData.audienceType,
       grade : formData.grade,
-      board : formData.board,
       degree : formData.degree,
       country: formData.country,
+      math_level: formData.mathLevel || null,
+      english_level: formData.englishLevel || null,
       duration: `${formData.totalWeeks} weeks`,
       credits: formData.creditType === "calculated" ? calculatedCredits : parseFloat(formData.manualCredits)
     };
@@ -270,24 +269,6 @@ localStorage.setItem("course-init", JSON.stringify(payload));
         ))}
       </select>
     </div>
-
-    <div className="form-group">
-      <label className="form-label">Education Board</label>
-      <select
-        className="form-input form-select"
-        name="board"
-        value={formData.board}
-        onChange={handleChange}
-      >
-        <option value="">Select board</option>
-        <option value="CBSE">CBSE</option>
-        <option value="ICSE">ICSE</option>
-        <option value="IB">IB (International Baccalaureate)</option>
-        <option value="IGCSE">IGCSE</option>
-        <option value="State Board">State Board</option>
-        <option value="Other">Other</option>
-      </select>
-    </div>
   </>
 )}
 
@@ -312,23 +293,52 @@ localStorage.setItem("course-init", JSON.stringify(payload));
   </>
 )}
 
-<div className="form-group">
-  <label className="form-label">Country / Region<span style={{color:'red'}}>*</span></label>
-  <select
-    className="form-input form-select"
-    name="country"
-    value={formData.country}
-    onChange={handleChange}
-    required
-  >
-    <option value="">Select country</option>
-    {countryList.map((country, idx) => (
-      <option key={idx} value={country}>{country}</option>
-    ))}
-  </select>
-</div>
+      <div className="form-group">
+        <label className="form-label">Country / Region<span style={{color:'red'}}>*</span></label>
+        <select
+          className="form-input form-select"
+          name="country"
+          value={formData.country}
+          onChange={handleChange}
+          required
+        >
+          <option value="">Select country</option>
+          {countryList.map((country, idx) => (
+            <option key={idx} value={country}>{country}</option>
+          ))}
+        </select>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Math Level Required</label>
+        <select
+          className="form-input form-select"
+          name="mathLevel"
+          value={formData.mathLevel}
+          onChange={handleChange}
+        >
+          <option value="">Not Required</option>
+          <option value="basic">Basic Math</option>
+          <option value="intermediate">Intermediate Math</option>
+          <option value="advanced">Advanced Math (e.g. calculus)</option>
+        </select>
+      </div>
 
-        
+      <div className="form-group">
+        <label className="form-label">English Level Required</label>
+        <select
+          className="form-input form-select"
+          name="englishLevel"
+          value={formData.englishLevel}
+          onChange={handleChange}
+        >
+          <option value="not required">Not Required</option>
+          <option value="basic level">Basic</option>
+          <option value="intermediate level">Intermediate</option>
+          <option value="nust be fluent">Fluent</option>
+          <option value="for native">Native</option>
+        </select>
+       </div>
+
         <div className="form-group">
           <label className="form-label">Prerequisites to the Course<span  style={{color:'red'}}>*</span></label>
           <textarea
