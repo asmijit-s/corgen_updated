@@ -26,15 +26,19 @@ const ModulesListPage = () => {
       navigate(`/submodules/${index}`);
       return;
     }
-
     try {
       setLoadingModuleIndex(index); // Mark as loading
-
+      console.log(`{
+          module_id: ${typeof(module.module_id||'')},
+          module_title: ${typeof(module.module_title)},
+          module_description: ${typeof(module.module_description)},
+          module_hours: ${typeof(module.module_hours)},
+        }`)
       const response = await fetch("http://localhost:8000/course/generate/submodules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          module_id: module.module_id,
+          module_id: module.module_id || '',
           module_title: module.module_title,
           module_description: module.module_description,
           module_hours: module.module_hours,

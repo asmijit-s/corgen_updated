@@ -45,14 +45,19 @@ SchemaDict["reading"]=ReadingMaterialOut
 SchemaDict["lecture"]=LectureScriptOut
 ################################# OUTLINE GENERATION ######################################################
 
+class TargetAudience(BaseModel):
+    demographic: str
+    board: str
+    specialization: str
+    country: Optional[str] = None
 
 class CourseInit(BaseModel):
-    course_id: str
+    course_id: Optional[str] = None  # Optional, will be generated
     title: str
     prerequisites: List[str]
     description: str
     learning_objectives: List[str]
-    target_audience: str
+    target_audience: TargetAudience
     duration: str
     credits: float
     
@@ -73,22 +78,26 @@ def generate_course_outline(course: CourseInit) -> Optional[dict]:
 You are a course design assistant helping Subject Matter Experts (SMEs) design high-quality academic courses. Based on the following inputs, generate a detailed course outline:
 
 INPUTS:
-- Title: {course.title}
-- Prerequisites: {course.prerequisites}
-- Description: {course.description}
-- Learning Objective: {', '.join(course.learning_objectives)}
-- Target Audience: {course.target_audience}
-- Duration: {course.duration}
-- Credits: {course.credits}
+Title: {course.title}
+Prerequisites: {course.prerequisites}
+Description: {course.description}
+Learning Objective: {', '.join(course.learning_objectives)}
+Target Audience:
+  - Learner Type: {course.target_audience.demographic}
+  - Education Board: {course.target_audience.board}
+  - Specialization: {course.target_audience.specialization}
+  - Country: {course.target_audience.country}
+Duration: {course.duration}
+Credits: {course.credits}
 
 Strictly return the output in the following format with clearly labeled sections:
-- Course ID:
-- Title:
-- Prerequisites:
-- Description (Elaborate based on input):
-- Learning OUTCOMES (Address skills gained by students, refer to instruction 1. Eg. 'Students will be able to...'):
-- Total Duration:
-- Total Credits
+Course ID: {course.course_id}
+Title:
+Prerequisites:
+Description (Elaborate based on input):
+Learning OUTCOMES (Address skills gained by students, refer to instruction 1. Eg. 'Students will be able to...'):
+Total Duration:
+Total Credits
 
 DEFINITIONS (NOT TO BE INCLUDED IN OUTPUT):
 1) Title: Course title.
@@ -105,6 +114,12 @@ INSTRUCTIONS FOR GENERATION:
 3) Ensure the description aligns with the learning objectives and outcomes. Avoid adding content not implied or supported by the inputs.
 4) The learning outcomes and description should be appropriate and relevant to the target audience.
 5) Strictly adhere to the output list format specified. The output should contain learning_outcomes NOT learning_objectives.
+6) Customize the content based on the target audience:
+   - For school students, use simplified concepts and age-appropriate vocabulary.
+   - For undergraduates and postgraduates, use academically appropriate structure and discipline-specific terminology.
+   - Consider the Education Board (e.g., CBSE, IB) to tailor rigor, format, or scope if relevant.
+   - Incorporate specialization to keep the course relevant to the learner's domain (e.g., use computing-related examples for CS students).
+7) Align learning outcomes with both the learner level and specialization.
 
 Output must strictly match the JSON schema provided. 
 Do NOT include additional fields like 'suggestions', 'notes', or 'explanations'.
@@ -119,7 +134,6 @@ Only return the raw structured object.
     )
     response = call_llm(prompt=user_content, system_prompt=prompt, response_schema=CourseOutline)
     return response if response is not None else {"error": "Nothing was generated. Please try again."}
-
 
 ############################### MODULE  GENERATION ######################################################
 class Module(BaseModel):

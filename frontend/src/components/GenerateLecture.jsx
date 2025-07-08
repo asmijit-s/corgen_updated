@@ -157,8 +157,6 @@ if (validationResponse.ok) {
   } catch (error) {
     console.error('Error saving content:', error);
     alert(error.message || 'Failed to save. Please try again.');
-  }finally{
-    setIsSubmitting(false);
   }
 };
 
@@ -287,6 +285,7 @@ if (validationResponse.ok) {
   }
 
   return (
+    <>
     <div className="editor-container">
       <div className="editor-header">
         <h2>Edit Lecture Script & Summary</h2>
@@ -300,6 +299,12 @@ if (validationResponse.ok) {
       <ReadingEditor generatingcontext="summary" />
       
     </div>
+    {isSubmitting && (
+      <div className="submission-overlay">
+        <div className="loader-spinner" />
+      </div>
+    )}
+    </>
   );
 };
 

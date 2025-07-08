@@ -21,7 +21,7 @@ import "katex/dist/katex.min.css";
 import "./css/ReadingEditor.css";
 import FontSizeControl from "./Fontsize";
 import { jsPDF } from 'jspdf';
-import { useParams } from "react-router-dom";
+import { useParams,useNavigate } from "react-router-dom";
 
 const convertToMarkdown = (content) => {
   return content
@@ -50,13 +50,15 @@ lowlight.register('javascript', javascript);
 lowlight.register('python', python);
 
 const ReadingEditor = ({ generatingcontext }) => {
-    console.log(generatingcontext);
+  console.log(generatingcontext);
   const lowlight = createLowlight(common);
   const fileInputRef = useRef(null);
   const [viewMode, setViewMode] = useState("wysiwyg"); // 'wysiwyg' or 'markdown'
   const [markdownContent, setMarkdownContent] = useState("");
   const { moduleId, submoduleId, activity_idx } = useParams();
   const defaultContent = `Nothing was generated please try again lol`;
+  const navigate = useNavigate();
+
 
     const getCurrentActivity = () => {
         const raw = localStorage.getItem("generatedCourse");
@@ -278,6 +280,19 @@ const downloadAsPDF = async () => {
     alert('Error generating PDF. Try again.');
   }
 };
+const handleDeleteContent = () => {
+  const context = getCurrentActivity();
+  if (!context) return;
+
+  const { course, moduleIdx, submoduleIdx, activityIdx } = context;
+  const activity = course.modules?.[moduleIdx]?.submodules?.[submoduleIdx]?.activities?.[activityIdx];
+
+  if (activity && activity.content) {
+    delete activity.content; // Remove the entire content object
+    localStorage.setItem("generatedCourse", JSON.stringify(course));
+    navigate(`/generate`);
+  }
+};
 
   const toggleViewMode = () => {
     if (viewMode === "wysiwyg") {
@@ -382,6 +397,9 @@ const downloadAsPDF = async () => {
           <button onClick={downloadAsPDF} className="pdf-download-btn" hidden>
             Download PDF
             </button>
+          <button onClick={handleDeleteContent} style={{ background: '#e74c3c', color: 'white' }}>
+              Delete Content
+          </button>
         </div>
         <div className="view-mode-toggle">
           <button onClick={toggleViewMode}>
